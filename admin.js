@@ -1,7 +1,7 @@
-const CATEGORY_LABELS = {
-  "electric-scooters": "ელექტროსკუტერები",
-  "electric-bikes": "ელექტროველოსიპედები",
-  "quad-bikes": "კვადროციკლები",
+﻿const CATEGORY_LABELS = {
+  "electric-scooters": "ელექტრო სკუტერები",
+  "electric-bikes": "ელექტრო ველოსიპედები",
+  "quad-bikes": "კვადრო ციკლები",
   "car-accessories": "მანქანის აქსესუარები",
 };
 
@@ -367,3 +367,4 @@ window.addEventListener("storage", (event) => {
 });
 
 renderAll();
+

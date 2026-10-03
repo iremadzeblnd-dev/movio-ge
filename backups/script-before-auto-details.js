@@ -483,64 +483,14 @@ function syncCatalogProducts() {
   applyCatalogFilter(activeCategoryFilter);
 }
 
-
-function getProductCategoryKey(product) {
-  const raw = String(product?.category || product?.categoryKey || "")
-    .trim()
-    .toLocaleLowerCase("ka-GE");
-
-  // კვადრო აუცილებლად შემოწმდეს ველოზე ადრე,
-  // რადგან "quad-bikes"-შიც არის სიტყვა "bike"
-  if (
-    raw === "quad-bikes" ||
-    raw.includes("quad") ||
-    raw.includes("atv") ||
-    raw.includes("კვად")
-  ) {
-    return "quad-bikes";
-  }
-
-  if (
-    raw === "electric-scooters" ||
-    raw.includes("scooter") ||
-    raw.includes("სკუტ")
-  ) {
-    return "electric-scooters";
-  }
-
-  if (
-    raw === "electric-bikes" ||
-    raw.includes("bicycle") ||
-    raw.includes("ველო") ||
-    raw.includes("ველოსიპ")
-  ) {
-    return "electric-bikes";
-  }
-
-  if (
-    raw === "car-accessories" ||
-    raw.includes("accessor") ||
-    raw.includes("აქსესუარ")
-  ) {
-    return "car-accessories";
-  }
-
-  return raw;
-}
 function applyCatalogFilter(categoryKey) {
-  document.querySelectorAll("[data-category-filter]").forEach((card) => {
-    card.classList.toggle(
-      "category-active",
-      Boolean(categoryKey) && card.dataset.categoryFilter === categoryKey
-    );
-  });
   activeCategoryFilter = categoryKey || "";
   const cards = document.querySelectorAll("#catalog .product-grid .category-detail");
   let visibleCount = 0;
   cards.forEach((card) => {
     const productButton = card.querySelector(".add-to-cart[data-product-id]");
     const product = productButton ? getProduct(productButton.dataset.productId) : null;
-    card.hidden = Boolean(activeCategoryFilter) && getProductCategoryKey(product) !== activeCategoryFilter;
+    card.hidden = Boolean(activeCategoryFilter) && product?.categoryKey !== activeCategoryFilter;
     if (!card.hidden) visibleCount += 1;
   });
 
@@ -764,37 +714,4 @@ if (window.location.hash === "#cart") {
   document.body.classList.add("cart-open");
 }
 
-
-
-
-
-
-
-// მთავარ გვერდზე შესვლისას ყოველთვის ყველა პროდუქტი აჩვენე
-window.addEventListener("load", () => {
-  if (!window.location.hash || window.location.hash === "#top") {
-    if (typeof applyCatalogFilter === "function") {
-      applyCatalogFilter("");
-    }
-  }
-});
-
-
-
-
-
-
-/* ყველა პროდუქტის "დეტალურად" ღილაკის ავტომატური მიბმა */
-document.querySelectorAll(".product-details-link").forEach((link) => {
-  const card = link.closest(".category-detail");
-  if (!card) return;
-
-  const productButton = card.querySelector("[data-product-id]");
-  const productId = productButton?.dataset.productId;
-
-  if (productId) {
-    link.href = `item.html?item=${encodeURIComponent(productId)}`;
-    link.removeAttribute("data-category-filter");
-  }
-});
 

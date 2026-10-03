@@ -485,23 +485,11 @@ function syncCatalogProducts() {
 
 
 function getProductCategoryKey(product) {
-  const raw = String(product?.category || product?.categoryKey || "")
+  const raw = String(product?.categoryKey || product?.category || "")
     .trim()
     .toLocaleLowerCase("ka-GE");
 
-  // კვადრო აუცილებლად შემოწმდეს ველოზე ადრე,
-  // რადგან "quad-bikes"-შიც არის სიტყვა "bike"
   if (
-    raw === "quad-bikes" ||
-    raw.includes("quad") ||
-    raw.includes("atv") ||
-    raw.includes("კვად")
-  ) {
-    return "quad-bikes";
-  }
-
-  if (
-    raw === "electric-scooters" ||
     raw.includes("scooter") ||
     raw.includes("სკუტ")
   ) {
@@ -509,7 +497,7 @@ function getProductCategoryKey(product) {
   }
 
   if (
-    raw === "electric-bikes" ||
+    raw.includes("bike") ||
     raw.includes("bicycle") ||
     raw.includes("ველო") ||
     raw.includes("ველოსიპ")
@@ -518,7 +506,14 @@ function getProductCategoryKey(product) {
   }
 
   if (
-    raw === "car-accessories" ||
+    raw.includes("quad") ||
+    raw.includes("atv") ||
+    raw.includes("კვად")
+  ) {
+    return "quad-bikes";
+  }
+
+  if (
     raw.includes("accessor") ||
     raw.includes("აქსესუარ")
   ) {
@@ -528,12 +523,6 @@ function getProductCategoryKey(product) {
   return raw;
 }
 function applyCatalogFilter(categoryKey) {
-  document.querySelectorAll("[data-category-filter]").forEach((card) => {
-    card.classList.toggle(
-      "category-active",
-      Boolean(categoryKey) && card.dataset.categoryFilter === categoryKey
-    );
-  });
   activeCategoryFilter = categoryKey || "";
   const cards = document.querySelectorAll("#catalog .product-grid .category-detail");
   let visibleCount = 0;
@@ -780,21 +769,4 @@ window.addEventListener("load", () => {
 });
 
 
-
-
-
-
-/* ყველა პროდუქტის "დეტალურად" ღილაკის ავტომატური მიბმა */
-document.querySelectorAll(".product-details-link").forEach((link) => {
-  const card = link.closest(".category-detail");
-  if (!card) return;
-
-  const productButton = card.querySelector("[data-product-id]");
-  const productId = productButton?.dataset.productId;
-
-  if (productId) {
-    link.href = `item.html?item=${encodeURIComponent(productId)}`;
-    link.removeAttribute("data-category-filter");
-  }
-});
 

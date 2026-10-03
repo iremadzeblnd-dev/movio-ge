@@ -1,11 +1,11 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ka" data-payment-available="false">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="MOVIO-ს ელექტროტრანსპორტისა და მანქანის აქსესუარების კატალოგი: ელექტროსკუტერები, ელექტროველოსიპედები, კვადროციკლები და აქსესუარები."
+      content="MOVIO-ს ელექტროტრანსპორტისა და მანქანის აქსესუარების კატალოგი: ელექტრო სკუტერები, ელექტრო ველოსიპედები, კვადრო ციკლები და აქსესუარები."
     />
     <title>MOVIO — ელექტროტრანსპორტი და მანქანის აქსესუარები</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
@@ -16,7 +16,10 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
-    <script src="store.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabaseClient.js" defer></script>
+<script src="store.js" defer></script>
+<script src="supabase-sync.js" defer></script>
     <script src="script.js" defer></script>
     <script src="customer-auth.js" defer></script>
   </head>
@@ -159,7 +162,7 @@
               <span class="card-arrow" aria-hidden="true">↗</span>
             </a>
 
-            <a class="category-card" href="#catalog" data-category-filter="quad-bikes" aria-label="კვადროციკლების ნახვა">
+            <a class="category-card" href="#catalog" data-category-filter="quad-bikes" aria-label="კვადრო ციკლების ნახვა">
               <div class="card-media">
                 <img
                   class="placeholder-art category-preview"
@@ -172,7 +175,7 @@
                 />
               </div>
               <div class="card-copy">
-                <h3>კვადროციკლები</h3>
+                <h3>კვადრო ციკლები</h3>
                 <p>გარე მარშრუტებისთვის</p>
               </div>
               <span class="card-arrow" aria-hidden="true">↗</span>
@@ -204,7 +207,7 @@
             aria-labelledby="electric-scooters-title"
           >
             <div class="category-detail-copy">
-              <span class="detail-index">ელექტროსკუტერები</span>
+              <span class="detail-index">ელექტრო სკუტერები</span>
               <h3 id="electric-scooters-title">ელექტრო<wbr />სკუტერები</h3>
               <p>ქალაქში გადაადგილებისთვის განკუთვნილი კატეგორია. მოდელების დეტალები დაემატება დადასტურებული ინფორმაციის მიღების შემდეგ.</p>
               <span class="product-availability">ფასის ინფორმაცია ჯერ არ არის მოწოდებული.</span>
@@ -235,7 +238,7 @@
             aria-labelledby="electric-bikes-title"
           >
             <div class="category-detail-copy">
-              <span class="detail-index">ელექტროველოსიპედები</span>
+              <span class="detail-index">ელექტრო ველოსიპედები</span>
               <h3 id="electric-bikes-title">ელექტრო<wbr />ველოსიპედები</h3>
               <p>ყოველდღიური მარშრუტებისთვის განკუთვნილი კატეგორია. მოდელების დეტალები დაემატება დადასტურებული ინფორმაციის მიღების შემდეგ.</p>
               <span class="product-availability">ფასის ინფორმაცია ჯერ არ არის მოწოდებული.</span>
@@ -266,8 +269,8 @@
             aria-labelledby="quad-bikes-title"
           >
             <div class="category-detail-copy">
-              <span class="detail-index">კვადროციკლები</span>
-              <h3 id="quad-bikes-title">კვადროციკლები</h3>
+              <span class="detail-index">კვადრო ციკლები</span>
+              <h3 id="quad-bikes-title">კვადრო ციკლები</h3>
               <p>გარე სივრცისა და განსხვავებული მარშრუტებისთვის განკუთვნილი კატეგორია. მოდელების დეტალები დაემატება დადასტურებული ინფორმაციის მიღების შემდეგ.</p>
               <span class="product-availability">ფასის ინფორმაცია ჯერ არ არის მოწოდებული.</span>
               <div class="product-actions">
@@ -442,3 +445,5 @@
     </div>
   </body>
 </html>
+
+

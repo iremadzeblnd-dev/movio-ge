@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="MOVIO-ს ელექტროტრანსპორტისა და მანქანის აქსესუარების კატალოგი: ელექტროსკუტერები, ელექტროველოსიპედები, კვადროციკლები და აქსესუარები."
+      content="MOVIO-ს ელექტროტრანსპორტისა და მანქანის აქსესუარების კატალოგი: ელექტრო სკუტერები, ელექტრო ველოსიპედები, კვადრო ციკლები და აქსესუარები."
     />
     <title>MOVIO — ელექტროტრანსპორტი და მანქანის აქსესუარები</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
@@ -16,7 +16,10 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
-    <script src="store.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabaseClient.js" defer></script>
+<script src="store.js" defer></script>
+<script src="supabase-sync.js" defer></script>
     <script src="script.js" defer></script>
     <script src="customer-auth.js" defer></script>
   </head>
@@ -112,10 +115,11 @@
 
         </section>
 
-        <section class="category-destinations" id="catalog" tabindex="-1" aria-labelledby="catalog-title">
+        
+<section class="category-destinations" id="catalog" tabindex="-1" aria-labelledby="catalog-title">
           <div class="transport-category-row">
 
-            <a class="transport-category-card" href="electric-scooters.html">
+            <a class="transport-category-card" href="#catalog" data-category-filter="electric-scooters">
               <div class="transport-category-icon transport-scooter-icon"><img src="movio-scooter-icon.png" alt="სკუტერები"></div>
               <div class="transport-category-bottom">
                 <span>სკუტერები</span>
@@ -123,7 +127,7 @@
               </div>
             </a>
 
-            <a class="transport-category-card" href="electric-bikes.html">
+            <a class="transport-category-card" href="#catalog" data-category-filter="electric-bikes">
               <div class="transport-category-icon transport-bike-icon"><img src="movio-ebike-icon.png" alt="ელექტრო ველოსიპედები"></div>
               <div class="transport-category-bottom">
                 <span>ველოსიპედები</span>
@@ -131,7 +135,7 @@
               </div>
             </a>
 
-            <a class="transport-category-card" href="quad-bikes.html">
+            <a class="transport-category-card" href="#catalog" data-category-filter="quad-bikes">
               <div class="transport-category-icon transport-quad-icon"><img src="movio-quad-icon.png" alt="კვადროები"></div>
               <div class="transport-category-bottom">
                 <span>კვადროები</span>
@@ -153,7 +157,7 @@
             aria-labelledby="electric-scooters-title"
           >
             <div class="category-detail-copy">
-              <span class="detail-index">ელექტროსკუტერები</span>
+              <span class="detail-index">ელექტრო სკუტერები</span>
               <h3 id="electric-scooters-title">ელექტრო<wbr />სკუტერები</h3>
               <p>ქალაქში გადაადგილებისთვის განკუთვნილი კატეგორია. მოდელების დეტალები დაემატება დადასტურებული ინფორმაციის მიღების შემდეგ.</p>
               <span class="product-availability">ფასის ინფორმაცია ჯერ არ არის მოწოდებული.</span>
@@ -161,7 +165,7 @@
                 <button class="add-to-cart" type="button" data-product-id="scooter-s1">
                   <span class="add-label">კალათაში</span><span class="add-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 4h2l2.1 9.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L20 7H6"/><circle cx="10" cy="19" r="1.4"/><circle cx="17" cy="19" r="1.4"/></svg></span>
                 </button>
-                <a class="product-details-link" href="electric-scooters.html">დეტალურად</a>
+                <a class="product-details-link" href="#catalog" data-category-filter="electric-scooters">დეტალურად</a>
               </div>
             </div>
             <div class="product-media">
@@ -184,7 +188,7 @@
             aria-labelledby="electric-bikes-title"
           >
             <div class="category-detail-copy">
-              <span class="detail-index">ელექტროველოსიპედები</span>
+              <span class="detail-index">ელექტრო ველოსიპედები</span>
               <h3 id="electric-bikes-title">ელექტრო<wbr />ველოსიპედები</h3>
               <p>ყოველდღიური მარშრუტებისთვის განკუთვნილი კატეგორია. მოდელების დეტალები დაემატება დადასტურებული ინფორმაციის მიღების შემდეგ.</p>
               <span class="product-availability">ფასის ინფორმაცია ჯერ არ არის მოწოდებული.</span>
@@ -192,7 +196,7 @@
                 <button class="add-to-cart" type="button" data-product-id="ebike-city">
                   <span class="add-label">კალათაში</span><span class="add-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 4h2l2.1 9.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L20 7H6"/><circle cx="10" cy="19" r="1.4"/><circle cx="17" cy="19" r="1.4"/></svg></span>
                 </button>
-                <a class="product-details-link" href="electric-bikes.html">დეტალურად</a>
+                <a class="product-details-link" href="#catalog" data-category-filter="electric-bikes">დეტალურად</a>
               </div>
             </div>
             <div class="product-media product-media--art" role="img" aria-label="ელექტროველოსიპედის ილუსტრაცია">
@@ -215,15 +219,15 @@
             aria-labelledby="quad-bikes-title"
           >
             <div class="category-detail-copy">
-              <span class="detail-index">კვადროციკლები</span>
-              <h3 id="quad-bikes-title">კვადროციკლები</h3>
+              <span class="detail-index">კვადრო ციკლები</span>
+              <h3 id="quad-bikes-title">კვადრო ციკლები</h3>
               <p>გარე სივრცისა და განსხვავებული მარშრუტებისთვის განკუთვნილი კატეგორია. მოდელების დეტალები დაემატება დადასტურებული ინფორმაციის მიღების შემდეგ.</p>
               <span class="product-availability">ფასის ინფორმაცია ჯერ არ არის მოწოდებული.</span>
               <div class="product-actions">
                 <button class="add-to-cart" type="button" data-product-id="quad-x4">
                   <span class="add-label">კალათაში</span><span class="add-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 4h2l2.1 9.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L20 7H6"/><circle cx="10" cy="19" r="1.4"/><circle cx="17" cy="19" r="1.4"/></svg></span>
                 </button>
-                <a class="product-details-link" href="quad-bikes.html">დეტალურად</a>
+                <a class="product-details-link" href="#catalog" data-category-filter="quad-bikes">დეტალურად</a>
               </div>
             </div>
             <div class="product-media">
@@ -389,8 +393,75 @@
         </div>
       </footer>
     </div>
-  </body>
+  <footer class="movio-footer">
+  <div class="movio-footer-inner">
+
+    <div class="footer-column">
+      <img src="movio-logo-final.svg" alt="MOVIO" class="footer-logo">
+      <p>MOVIO — ელექტრო ტრანსპორტი და ავტო აქსესუარები.</p>
+    </div>
+
+    <div class="footer-column">
+      <h3>ჩვენ შესახებ</h3>
+      <a href="index.html#catalog">კატალოგი</a>
+      <a href="#catalog" data-category-filter="electric-scooters">ელექტრო სკუტერები</a>
+      <a href="#catalog" data-category-filter="electric-bikes">ელექტრო ველოსიპედები</a>
+      <a href="#catalog" data-category-filter="quad-bikes">კვადრო ციკლები</a>
+    </div>
+
+    <div class="footer-column">
+      <h3>სოციალური ქსელები</h3>
+      <a href="#" class="social-link">
+  <span class="social-icon">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M14 8h3V4.5c-.5-.1-2-.2-3.8-.2-3.7 0-6.2 2.3-6.2 6.4V14H3v4h4v6h5v-6h4l.7-4H12v-3c0-1.2.3-2 2-2z"/>
+    </svg>
+  </span>
+  <span>Facebook</span>
+</a>
+
+<a href="#" class="social-link">
+  <span class="social-icon">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7zm5 3.8A4.2 4.2 0 1 1 7.8 12 4.2 4.2 0 0 1 12 7.8zm0 2A2.2 2.2 0 1 0 14.2 12 2.2 2.2 0 0 0 12 9.8zm5.4-3.3a1 1 0 1 1-1 1 1 1 0 0 1 1-1z"/>
+    </svg>
+  </span>
+  <span>Instagram</span>
+</a>
+
+<a href="#" class="social-link">
+  <span class="social-icon">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M15.5 3c.5 2.5 2 4 4.5 4.5v4a10 10 0 0 1-4.5-1.2v6.1A6.6 6.6 0 1 1 9.8 9.9v4a2.7 2.7 0 1 0 1.7 2.5V3h4z"/>
+    </svg>
+  </span>
+  <span>TikTok</span>
+</a>
+    </div>
+
+    <div class="footer-column">
+      <h3>დაგვიკავშირდი</h3>
+      <a href="tel:+995557380340">📞 557 380 340</a>
+      <a href="mailto:iremadzeblnd@gmail.com">✉️ iremadzeblnd@gmail.com</a>
+      <p>🚚 მიწოდება საქართველოს მასშტაბით</p>
+      <p>💳 განვადება ხელმისაწვდომია</p>
+    </div>
+
+  </div>
+
+  <div class="footer-bottom">
+    <span>© 2026 MOVIO. ყველა უფლება დაცულია.</span>
+  </div>
+</footer>
+</body>
 </html>
+
+
+
+
+
+
+
 
 
 

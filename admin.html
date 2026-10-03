@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ka">
 <head>
   <meta charset="UTF-8">
@@ -111,15 +111,114 @@
     @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
     @media(max-width:760px){.product-row{grid-template-columns:46px minmax(0,1fr) auto;grid-template-rows:auto auto}.product-image{grid-column:1;grid-row:1/3}.product-row .product-stock{display:block;grid-column:2;grid-row:2}.product-actions{grid-column:3;grid-row:2;justify-content:end}}
     @media(max-width:420px){.product-row{grid-template-columns:40px minmax(0,1fr) auto}.product-image{width:40px;height:40px}}
-  </style>
-  <style id="demo-mode">#loginPanel{display:none!important}</style>
-  <script src="store.js" defer></script>
+  .movio-admin-login{
+  min-height:100vh;
+  display:grid;
+  place-items:center;
+  padding:24px;
+  background:#0d0f0c;
+}
+
+.movio-admin-login-card{
+  width:min(420px,100%);
+  padding:32px;
+  border:1px solid #2b3028;
+  border-radius:18px;
+  background:#151714;
+}
+
+.movio-admin-login-card h1{
+  margin:18px 0 24px;
+  font-size:1.35rem;
+}
+
+.movio-admin-login-card label{
+  display:block;
+  margin:14px 0 7px;
+  color:#b8beb5;
+  font-size:.78rem;
+}
+
+.movio-admin-login-card input{
+  width:100%;
+  min-height:46px;
+  padding:0 13px;
+  border:1px solid #343a31;
+  border-radius:10px;
+  background:#0f110e;
+  color:#fff;
+}
+
+.movio-admin-login-card button{
+  width:100%;
+  min-height:46px;
+  margin-top:20px;
+  border:0;
+  border-radius:10px;
+  background:#c6ff1a;
+  color:#0b0d09;
+  font-weight:900;
+}
+
+#loginMessage{
+  min-height:20px;
+  margin-top:12px;
+  color:#ff8c8c;
+  font-size:.75rem;
+}
+
+.admin-logout{
+  margin:0 8px 20px;
+  border:1px solid #343a31;
+  padding:8px 12px;
+  background:transparent;
+  color:#fff;
+  border-radius:8px;
+}
+
+</style>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabaseClient.js" defer></script>
+<script src="store.js" defer></script>
+<script src="supabase-sync.js" defer></script>
   <script src="admin.js" defer></script>
+<script src="admin-auth.js" defer></script>
 </head>
 <body>
-  <div class="admin-shell" id="adminPanel">
+
+<section id="loginPanel" class="movio-admin-login">
+  <form id="adminLoginForm" class="movio-admin-login-card">
+    <p class="brand">MOVIO <span>ADMIN</span></p>
+<button id="adminLogout" type="button" class="admin-logout">გასვლა</button>
+
+    <h1>ადმინისტრატორის შესვლა</h1>
+
+    <label for="adminEmail">ელფოსტა</label>
+    <input
+      id="adminEmail"
+      type="email"
+      autocomplete="username"
+      required
+    >
+
+    <label for="adminPassword">პაროლი</label>
+    <input
+      id="adminPassword"
+      type="password"
+      autocomplete="current-password"
+      required
+    >
+
+    <button type="submit">შესვლა</button>
+
+    <p id="loginMessage"></p>
+  </form>
+</section>
+  <div class="admin-shell" id="adminPanel" hidden>
     <aside class="sidebar">
       <p class="brand">MOVIO <span>ADMIN</span></p>
+<button id="adminLogout" type="button" class="admin-logout">გასვლა</button>
       <p class="nav-label">მართვა</p>
       <nav class="navigation" aria-label="მართვის განყოფილებები">
         <button type="button" data-view-link="dashboard" aria-current="page"><span class="nav-mark">▦</span>მთავარი</button>
@@ -156,7 +255,24 @@
           <input type="hidden" name="id" id="productId">
           <div class="form-grid">
             <div class="field"><label for="productName">პროდუქტის სახელი</label><input id="productName" name="name" required maxlength="120"></div>
-            <div class="field"><label for="productCategory">კატეგორია</label><select id="productCategory" name="category" required><option value="electric-scooters">ელექტროსკუტერები</option><option value="electric-bikes">ელექტროველოსიპედები</option><option value="quad-bikes">კვადროციკლები</option><option value="car-accessories">მანქანის აქსესუარები</option></select></div>
+            <div class="field">
+  <label for="productCategory">კატეგორია</label>
+  <input
+    id="productCategory"
+    name="category"
+    type="text"
+    list="productCategorySuggestions"
+    placeholder="ჩაწერე კატეგორიის სახელი"
+    autocomplete="off"
+    required
+  >
+  <datalist id="productCategorySuggestions">
+    <option value="ელექტრო სკუტერები">
+    <option value="ელექტრო ველოსიპედები">
+    <option value="კვადრო ციკლები">
+    <option value="მანქანის აქსესუარები">
+  </datalist>
+</div>
             <div class="field"><label for="productPrice">მიმდინარე ფასი (₾)</label><input id="productPrice" name="price" type="number" min="0.01" step="0.01" required></div>
             <div class="field"><div class="field-heading"><label for="productOldPrice">ძველი ფასი (₾)</label><label class="stock-visibility-toggle" for="productOldPriceVisible" aria-label="ძველი ფასის ჩვენება"><input id="productOldPriceVisible" name="oldPriceVisible" type="checkbox" value="true" role="switch" checked><span class="stock-visibility-track" aria-hidden="true"></span></label></div><input id="productOldPrice" name="oldPrice" type="number" min="0" step="0.01"></div>
             <div class="field"><div class="field-heading"><label for="productStock">მარაგი</label><label class="stock-visibility-toggle" for="productStockQuantityVisible" aria-label="მარაგის რაოდენობის ჩვენება"><input id="productStockQuantityVisible" name="stockQuantityVisible" type="checkbox" value="true" role="switch"><span class="stock-visibility-track" aria-hidden="true"></span></label></div><input id="productStock" name="stock" type="number" min="0" step="1" value="1" required></div>
@@ -167,7 +283,7 @@
           <div class="form-actions"><button class="primary-button" type="submit">შენახვა</button><button class="quiet-button" id="cancelProductButton" type="button">გაუქმება</button></div>
           <p class="message" id="productMessage" role="status"></p>
         </form>
-        <div class="section-bar"><h2>კატალოგი <span class="muted" id="productCount"></span></h2><div class="filters"><input id="productSearch" type="search" placeholder="სახელით ძიება" aria-label="პროდუქტის ძიება"><select id="productCategoryFilter" aria-label="კატეგორიის ფილტრი"><option value="">ყველა კატეგორია</option><option value="electric-scooters">ელექტროსკუტერები</option><option value="electric-bikes">ელექტროველოსიპედები</option><option value="quad-bikes">კვადროციკლები</option><option value="car-accessories">მანქანის აქსესუარები</option></select></div></div>
+        <div class="section-bar"><h2>კატალოგი <span class="muted" id="productCount"></span></h2><div class="filters"><input id="productSearch" type="search" placeholder="სახელით ძიება" aria-label="პროდუქტის ძიება"><select id="productCategoryFilter" aria-label="კატეგორიის ფილტრი"><option value="">ყველა კატეგორია</option><option value="electric-scooters">ელექტრო სკუტერები</option><option value="electric-bikes">ელექტრო ველოსიპედები</option><option value="quad-bikes">კვადრო ციკლები</option><option value="car-accessories">მანქანის აქსესუარები</option></select></div></div>
         <div class="panel" id="productsList"></div>
       </section>
 
@@ -186,6 +302,11 @@
   </div>
 
   <dialog id="customerDialog" aria-labelledby="customerDialogTitle"><div class="dialog-head"><h2 id="customerDialogTitle">შეკვეთების ისტორია</h2><button class="icon-button" id="closeCustomerDialog" type="button" aria-label="დახურვა">×</button></div><div class="customer-history" id="customerHistory"></div></dialog>
-  <script>window.addEventListener("load",()=>{setTimeout(()=>{const login=document.getElementById("loginPanel");const admin=document.getElementById("adminPanel");if(login)login.style.display="none";if(admin)admin.style.display="";},300);});</script>
+  
 </body>
 </html>
+
+
+
+
+

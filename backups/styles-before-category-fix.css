@@ -4914,23 +4914,3 @@ img[src*="movio-logo-final.svg"]{
   }
 }
 
-
-/* CATEGORY ACTIVE STATE */
-.transport-category-card{
-  caret-color:transparent !important;
-  outline:none !important;
-  transition:border-color .2s ease, box-shadow .2s ease;
-}
-
-.transport-category-card.category-active{
-  border-color:#c6ff1a !important;
-  box-shadow:0 0 0 1px #c6ff1a inset,
-             0 0 18px rgba(198,255,26,.10);
-}
-
-.transport-category-card:focus,
-.transport-category-card:focus-visible{
-  outline:none !important;
-  caret-color:transparent !important;
-}
-
