@@ -79,22 +79,12 @@ function setStockStatusClass(element, product) {
   element.classList.toggle("stock-unavailable", !isAvailable);
 }
 
-function getDiscountPercent(product) {
-  if (product?.discountVisible !== true) return 0;
-
-  const percent = Number(product?.discountPercent || 0);
-
-  if (!Number.isFinite(percent) || percent <= 0) return 0;
-
-  return Math.min(99, Math.round(percent));
-}
-
 function syncDiscountBadge(media, product) {
   media?.querySelectorAll(".product-discount").forEach((badge) => badge.remove());
   if (!media || product.discountVisible !== true) return;
   const badge = document.createElement("span");
   badge.className = "product-discount";
-  badge.textContent = `-${getDiscountPercent(product)}%`;
+  badge.textContent = `-${Number(product.discountPercent ?? 0)}%`;
   media.prepend(badge);
 }
 
