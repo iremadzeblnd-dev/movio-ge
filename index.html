@@ -18,9 +18,9 @@
     <link rel="stylesheet" href="styles.css" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabaseClient.js" defer></script>
-<script src="store.js" defer></script>
-<script src="supabase-sync.js" defer></script>
-    <script src="script.js" defer></script>
+<script src="store.js?v=20261003-2" defer></script>
+<script src="supabase-sync.js?v=20261003-2" defer></script>
+    <script src="script.js?v=20261003-2" defer></script>
     <script src="customer-auth.js" defer></script>
     <script src="mobile-storefront.js" defer></script>
   </head>
@@ -147,122 +147,6 @@
             <button id="clearCategoryFilter" type="button">ყველა პროდუქტი <span aria-hidden="true">×</span></button>
           </div>
           <div class="product-grid">
-          <article
-            class="category-detail"
-            id="electric-scooters"
-            tabindex="-1"
-            aria-labelledby="electric-scooters-title"
-          >
-            <div class="category-detail-copy">
-              <span class="detail-index">ელექტრო სკუტერები</span>
-              <h3 id="electric-scooters-title">ელექტრო<wbr />სკუტერები</h3>
-              <p>ქალაქში გადაადგილებისთვის განკუთვნილი კატეგორია. მოდელების დეტალები დაემატება დადასტურებული ინფორმაციის მიღების შემდეგ.</p>
-              <span class="product-availability">ფასის ინფორმაცია ჯერ არ არის მოწოდებული.</span>
-              <div class="product-actions">
-                <button class="add-to-cart" type="button" data-product-id="scooter-s1">
-                  <span class="add-label">კალათაში</span><span class="add-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 4h2l2.1 9.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L20 7H6"/><circle cx="10" cy="19" r="1.4"/><circle cx="17" cy="19" r="1.4"/></svg></span>
-                </button>
-              </div>
-            </div>
-            <div class="product-media">
-              <span class="product-label">ელექტროსკუტერი</span>
-              <img
-                src="scooter-red.png"
-                alt="წითელ-შავი ელექტროსკუტერი"
-                width="960"
-                height="1280"
-                loading="lazy"
-                decoding="async"
-              />
-            </div>
-          </article>
-
-          <article
-            class="category-detail category-detail--reverse"
-            id="electric-bikes"
-            tabindex="-1"
-            aria-labelledby="electric-bikes-title"
-          >
-            <div class="category-detail-copy">
-              <span class="detail-index">ელექტრო ველოსიპედები</span>
-              <h3 id="electric-bikes-title">ელექტრო<wbr />ველოსიპედები</h3>
-              <p>ყოველდღიური მარშრუტებისთვის განკუთვნილი კატეგორია. მოდელების დეტალები დაემატება დადასტურებული ინფორმაციის მიღების შემდეგ.</p>
-              <span class="product-availability">ფასის ინფორმაცია ჯერ არ არის მოწოდებული.</span>
-              <div class="product-actions">
-                <button class="add-to-cart" type="button" data-product-id="ebike-city">
-                  <span class="add-label">კალათაში</span><span class="add-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 4h2l2.1 9.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L20 7H6"/><circle cx="10" cy="19" r="1.4"/><circle cx="17" cy="19" r="1.4"/></svg></span>
-                </button>
-              </div>
-            </div>
-            <div class="product-media product-media--art" role="img" aria-label="ელექტროველოსიპედის ილუსტრაცია">
-              <span class="product-label">ელექტროველოსიპედი</span>
-              <div class="placeholder-art bike-art" aria-hidden="true">
-                <span class="wheel wheel-left"></span>
-                <span class="wheel wheel-right"></span>
-                <span class="bike-frame"></span>
-                <span class="bike-fork"></span>
-                <span class="bike-seat"></span>
-                <span class="bike-handle"></span>
-              </div>
-            </div>
-          </article>
-
-          <article
-            class="category-detail"
-            id="quad-bikes"
-            tabindex="-1"
-            aria-labelledby="quad-bikes-title"
-          >
-            <div class="category-detail-copy">
-              <span class="detail-index">კვადრო ციკლები</span>
-              <h3 id="quad-bikes-title">კვადრო ციკლები</h3>
-              <p>გარე სივრცისა და განსხვავებული მარშრუტებისთვის განკუთვნილი კატეგორია. მოდელების დეტალები დაემატება დადასტურებული ინფორმაციის მიღების შემდეგ.</p>
-              <span class="product-availability">ფასის ინფორმაცია ჯერ არ არის მოწოდებული.</span>
-              <div class="product-actions">
-                <button class="add-to-cart" type="button" data-product-id="quad-x4">
-                  <span class="add-label">კალათაში</span><span class="add-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 4h2l2.1 9.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L20 7H6"/><circle cx="10" cy="19" r="1.4"/><circle cx="17" cy="19" r="1.4"/></svg></span>
-                </button>
-              </div>
-            </div>
-            <div class="product-media">
-              <span class="product-label">კვადროციკლი</span>
-              <img
-                src="cyadro-2.jpg"
-                alt="წითელ-შავი კვადროციკლი"
-                width="1254"
-                height="1254"
-                loading="lazy"
-                decoding="async"
-              />
-            </div>
-          </article>
-
-          <article
-            class="category-detail category-detail--reverse"
-            id="car-accessories"
-            tabindex="-1"
-            aria-labelledby="car-accessories-title"
-          >
-            <div class="category-detail-copy">
-              <span class="detail-index">მანქანის აქსესუარები</span>
-              <h3 id="car-accessories-title">მანქანის აქსესუარები</h3>
-              <p>ავტომობილის ყოველდღიური გამოყენებისა და მოვლისთვის განკუთვნილი კატეგორია. პროდუქტების დეტალები დაემატება დადასტურებული ინფორმაციის მიღების შემდეგ.</p>
-              <span class="product-availability">ფასის ინფორმაცია ჯერ არ არის მოწოდებული.</span>
-              <div class="product-actions">
-                <button class="add-to-cart" type="button" data-product-id="auto-kit">
-                  <span class="add-label">კალათაში</span><span class="add-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 4h2l2.1 9.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L20 7H6"/><circle cx="10" cy="19" r="1.4"/><circle cx="17" cy="19" r="1.4"/></svg></span>
-                </button>
-              </div>
-            </div>
-            <div class="product-media product-media--art" role="img" aria-label="მანქანის აქსესუარების ილუსტრაცია">
-              <span class="product-label">მანქანის აქსესუარები</span>
-              <div class="placeholder-art accessory-art" aria-hidden="true">
-                <span class="accessory-ring ring-one"></span>
-                <span class="accessory-ring ring-two"></span>
-                <span class="accessory-core">M</span>
-              </div>
-            </div>
-          </article>
           <div class="managed-products" data-managed-products></div>
           </div>
           <p class="catalog-empty" id="catalogEmpty" hidden>ამ კატეგორიაში პროდუქტი ჯერ არ არის.</p>
@@ -448,6 +332,7 @@
 </footer>
 </body>
 </html>
+
 
 
 

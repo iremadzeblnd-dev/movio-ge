@@ -5,49 +5,7 @@ const searchForm = document.querySelector(".search-form");
 const searchInput = document.querySelector("#site-search");
 const searchMessage = document.querySelector(".search-message");
 const searchResults = document.querySelector(".search-results");
-let activeCategoryFilter = "";
-
-const DETAIL_PAGES = {
-  "electric-scooters": "electric-scooters.html",
-  "electric-bikes": "electric-bikes.html",
-  "quad-bikes": "quad-bikes.html",
-  "car-accessories": "car-accessories.html",
-};
-
-const PRODUCTS = {
-  "scooter-s1": {
-    id: "scooter-s1",
-    name: "ელექტრო სკუტერები",
-    category: "ელექტრო სკუტერები",
-    image: "scooter-red.png",
-    imageAlt: "წითელ-შავი ელექტროსკუტერი",
-    imageWidth: 960,
-    imageHeight: 1280,
-    mark: "01",
-  },
-  "ebike-city": {
-    id: "ebike-city",
-    name: "ელექტრო ველოსიპედები",
-    category: "ელექტრო ველოსიპედები",
-    mark: "02",
-  },
-  "quad-x4": {
-    id: "quad-x4",
-    name: "კვადრო ციკლები",
-    category: "კვადრო ციკლები",
-    image: "cyadro-2.jpg",
-    imageAlt: "წითელ-შავი კვადროციკლი",
-    imageWidth: 1254,
-    imageHeight: 1254,
-    mark: "03",
-  },
-  "auto-kit": {
-    id: "auto-kit",
-    name: "მანქანის აქსესუარები",
-    category: "მანქანის აქსესუარები",
-    mark: "04",
-  },
-};
+let activeCategoryFilter = new URLSearchParams(window.location.search).get("category") || "";
 
 const CATEGORY_LABELS = {
   "electric-scooters": "ელექტრო სკუტერები",
@@ -61,7 +19,6 @@ function getProduct(productId) {
   if (!savedProduct || savedProduct.active === false) return null;
 
   return {
-    ...PRODUCTS[productId],
     ...savedProduct,
     categoryKey: savedProduct.category,
     category: CATEGORY_LABELS[savedProduct.category] || savedProduct.category,
@@ -382,7 +339,7 @@ function renderProductCard(article, product) {
 function renderManagedProducts() {
   const mount = document.querySelector("[data-managed-products]");
   if (!mount) return;
-  const customProducts = window.MovioStore.getProducts().filter((product) => !PRODUCTS[product.id] && product.active !== false);
+  const customProducts = window.MovioStore.getProducts().filter((product) => product.active !== false);
   const articles = customProducts.map((product) => {
     const article = document.createElement("article");
     article.className = "category-detail managed-product";
@@ -394,16 +351,6 @@ function renderManagedProducts() {
 }
 
 function syncCatalogProducts() {
-  document.querySelectorAll(".category-detail:not(.managed-product)").forEach((article) => {
-    const button = article.querySelector(".add-to-cart[data-product-id]");
-    if (!button) return;
-    const product = getProduct(button.dataset.productId);
-    if (!product) {
-      article.querySelectorAll(".add-to-cart").forEach((control) => { control.disabled = true; });
-      return;
-    }
-    renderProductCard(article, product);
-  });
   renderManagedProducts();
   applyCatalogFilter(activeCategoryFilter);
 }
@@ -474,7 +421,7 @@ function applyCatalogFilter(categoryKey) {
   if (label) label.textContent = CATEGORY_LABELS[activeCategoryFilter] || "";
   if (filterState) filterState.hidden = !activeCategoryFilter;
   const emptyState = document.querySelector("#catalogEmpty");
-  if (emptyState) emptyState.hidden = !activeCategoryFilter || visibleCount > 0;
+  if (emptyState) emptyState.hidden = visibleCount > 0;
 }
 
 
@@ -697,7 +644,7 @@ if (window.location.hash === "#cart") {
 
 // მთავარ გვერდზე შესვლისას ყოველთვის ყველა პროდუქტი აჩვენე
 window.addEventListener("load", () => {
-  if (!window.location.hash || window.location.hash === "#top") {
+  if (!activeCategoryFilter && (!window.location.hash || window.location.hash === "#top")) {
     if (typeof applyCatalogFilter === "function") {
       applyCatalogFilter("");
     }

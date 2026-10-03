@@ -68,7 +68,9 @@
         '{"products":[],"orders":[]}'
       );
 
-      const remoteProducts = (data || []).map(fromDb);
+      const remoteProducts = (data || [])
+        .filter((row) => !window.MovioStore.isLegacyDemoProduct(row))
+        .map(fromDb);
       const currentProducts = Array.isArray(state.products)
         ? state.products
         : [];

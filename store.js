@@ -1,6 +1,6 @@
 ﻿(function () {
   const STORAGE_KEY = "movio-data-v1";
-  const DEMO_PRODUCTS = [];
+  const LEGACY_DEMO_IDS = new Set(["scooter-s1", "ebike-city", "quad-x4", "auto-kit"]);
   let memoryState;
 
   function clone(value) {
@@ -8,7 +8,11 @@
   }
 
   function initialState() {
-    return { products: clone(DEMO_PRODUCTS), orders: [] };
+    return { products: [], orders: [] };
+  }
+
+  function isLegacyDemoProduct(product) {
+    return LEGACY_DEMO_IDS.has(String(product.id));
   }
 
   function readState() {
@@ -18,6 +22,9 @@
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed.products) && Array.isArray(parsed.orders)) {
           let migrated = false;
+          const retainedProducts = parsed.products.filter((product) => !isLegacyDemoProduct(product));
+          if (retainedProducts.length !== parsed.products.length) migrated = true;
+          parsed.products = retainedProducts;
           parsed.products = parsed.products.map((product) => {
             const updatedProduct = { ...product };
             if (typeof updatedProduct.stockStatusVisible !== "boolean") {
@@ -195,6 +202,7 @@
   }
 
   window.MovioStore = {
+    isLegacyDemoProduct,
     getProducts,
     saveProduct,
     getStockLabel,
