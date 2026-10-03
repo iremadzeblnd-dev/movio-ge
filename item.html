@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ka">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="MOVIO-ს კატალოგში არსებული პროდუქტის ინფორმაცია და ფოტო."
+    />
+    <title>MOVIO — პროდუქტის დეტალები</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="item.js" defer></script>
+  </head>
+  <body class="item-details-page">
+    <a class="skip-link" href="#item-main">მთავარ შიგთავსზე გადასვლა</a>
+    <div class="item-page-shell">
+      <header class="item-page-header" aria-label="პროდუქტის გვერდის ნავიგაცია">
+        <a class="wordmark" href="index.html#top" aria-label="MOVIO-ს მთავარ გვერდზე დაბრუნება">
+          <img src="movio-logo-final.svg" alt="MOVIO" width="340" height="112" />
+        </a>
+        <a class="item-header-back" href="index.html#catalog">← კატალოგი</a>
+      </header>
+
+      <main class="item-page-main" id="item-main" tabindex="-1">
+        <article class="item-page-detail" aria-labelledby="item-page-title">
+          <figure class="item-page-media">
+            <img class="item-page-image" alt="" hidden />
+            <div class="item-page-no-photo" hidden>
+              <span class="item-page-no-photo-index" aria-hidden="true"></span>
+              <p>პროდუქტის ფოტო პროექტში არ არის მოწოდებული.</p>
+            </div>
+          </figure>
+
+          <div class="item-page-copy">
+            <p class="item-page-index"></p>
+            <h1 id="item-page-title"></h1>
+            <p class="item-page-description"></p>
+            <p class="item-page-availability">ფასის ინფორმაცია ჯერ არ არის მოწოდებული.</p>
+            <a class="item-page-back" href="index.html#catalog">
+              <span aria-hidden="true">←</span>
+              <span>კატალოგში დაბრუნება</span>
+            </a>
+          </div>
+        </article>
+
+        <section class="item-page-not-found" aria-labelledby="not-found-title" hidden>
+          <p>404</p>
+          <h1 id="not-found-title">პროდუქტი ვერ მოიძებნა</h1>
+          <a class="item-page-back" href="index.html#catalog">
+            <span aria-hidden="true">←</span>
+            <span>კატალოგში დაბრუნება</span>
+          </a>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

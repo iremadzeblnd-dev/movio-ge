@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="ka">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MOVIO Admin</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #111310;
+      color: #f5f6f1;
+      font-family: Arial, sans-serif;
+    }
+    .container {
+      width: min(1100px, 92%);
+      margin: auto;
+      padding: 40px 0;
+    }
+
+    h1 {
+      margin-bottom: 30px;
+    }
+
+    .accent {
+      color: #c8ff2e;
+    }
+
+    .panel {
+      padding: 24px;
+      border: 1px solid #343834;
+      background: #181b18;
+      margin-bottom: 25px;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      padding: 13px;
+      margin: 7px 0 15px;
+      border: 1px solid #3b403a;
+      background: #111310;
+      color: white;
+      font: inherit;
+    }
+
+    textarea {
+      min-height: 110px;
+      resize: vertical;
+    }
+
+    button {
+      padding: 14px 20px;
+      border: 0;
+      background: #c8ff2e;
+      color: #111310;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .logout {
+      background: transparent;
+      color: #c8ff2e;
+      border: 1px solid #c8ff2e;
+    }
+
+    .top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .product {
+      border-top: 1px solid #343834;
+      padding: 18px 0;
+      display: grid;
+      grid-template-columns: 90px 1fr auto;
+      gap: 15px;
+      align-items: center;
+    }
+
+    .product img {
+      width: 90px;
+      height: 90px;
+      object-fit: contain;
+      background: white;
+    }
+
+    .delete {
+      background: #9d2727;
+      color: white;
+    }
+
+    #adminPanel {
+      display: none;
+    }
+
+    .message {
+      min-height: 22px;
+      margin-top: 12px;
+      color: #c8ff2e;
+    }
+
+    @media (max-width: 700px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .product {
+        grid-template-columns: 70px 1fr;
+      }
+
+      .product img {
+        width: 70px;
+        height: 70px;
+      }
+
+      .product .delete {
+        grid-column: 1 / -1;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <div id="loginPanel" class="panel">
+      <h1>MOVIO <span class="accent">ADMIN</span></h1>
+
+      <label>ელფოსტა</label>
+      <input id="email" type="email">
+
+      <label>პაროლი</label>
+      <input id="password" type="password">
+
+      <button id="loginBtn">შესვლა</button>
+
+      <p id="loginMessage" class="message"></p>
+    </div>
+
+
+    <div id="adminPanel">
+
+      <div class="top">
+        <h1>MOVIO <span class="accent">ADMIN</span></h1>
+        <button id="logoutBtn" class="logout">გასვლა</button>
+      </div>
+
+      <div class="panel">
+        <h2>პროდუქტის დამატება</h2>
+
+        <form id="productForm">
+
+          <div class="grid">
+            <div>
+              <label>პროდუქტის სახელი</label>
+              <input id="name" required>
+            </div>
+
+            <div>
+              <label>კატეგორია</label>
+              <select id="category" required>
+                <option value="">აირჩიე კატეგორია</option>
+                <option value="electric-scooters">ელექტროსკუტერები</option>
+                <option value="electric-bikes">ელექტროველოსიპედები</option>
+                <option value="quad-bikes">კვადროციკლები</option>
+                <option value="car-accessories">მანქანის აქსესუარები</option>
+              </select>
+            </div>
+
+            <div>
+              <label>ფასი</label>
+              <input id="price" type="number" step="0.01" required>
+            </div>
+
+            <div>
+              <label>ძველი ფასი</label>
+              <input id="oldPrice" type="number" step="0.01">
+            </div>
+
+            <div>
+              <label>მარაგი</label>
+              <input id="stock" type="number" value="1" min="0">
+            </div>
+
+            <div>
+              <label>ფოტო</label>
+              <input id="image" type="file" accept="image/*" required>
+            </div>
+          </div>
+
+          <label>აღწერა</label>
+          <textarea id="description"></textarea>
+
+          <button type="submit">პროდუქტის დამატება</button>
+
+          <p id="productMessage" class="message"></p>
+        </form>
+      </div>
+
+
+      <div class="panel">
+        <h2>პროდუქტები</h2>
+        <div id="productsList"></div>
+      </div>
+
+    </div>
+  </div>
+
+
+<script>
+
+const SUPABASE_URL = "https://sacficxbqzelraknyht.supabase.co";
+
+const SUPABASE_KEY = "sb_publishable_ZhB6vfBrJYvRPPcwPt6q9Q_tDiXYi45";
+
+const db = supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
+
+
+const loginPanel = document.getElementById("loginPanel");
+const adminPanel = document.getElementById("adminPanel");
+
+const loginMessage = document.getElementById("loginMessage");
+const productMessage = document.getElementById("productMessage");
+
+
+async function checkSession() {
+
+  const {
+    data: { session }
+  } = await db.auth.getSession();
+
+  if (session) {
+    loginPanel.style.display = "none";
+    adminPanel.style.display = "block";
+    loadProducts();
+  }
+
+}
+
+
+document.getElementById("loginBtn").addEventListener("click", async () => {
+
+  loginMessage.textContent = "იტვირთება...";
+
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+
+  const { error } = await db.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  if (error) {
+  loginMessage.textContent = error.message;
+  console.error(error);
+  return;
+}
+
+  loginPanel.style.display = "none";
+  adminPanel.style.display = "block";
+
+  loadProducts();
+
+});
+
+
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+
+  await db.auth.signOut();
+
+  adminPanel.style.display = "none";
+  loginPanel.style.display = "block";
+
+});
+
+
+document.getElementById("productForm").addEventListener("submit", async (event) => {
+
+  event.preventDefault();
+
+  productMessage.textContent = "პროდუქტი იტვირთება...";
+
+  const file = document.getElementById("image").files[0];
+
+  if (!file) {
+    productMessage.textContent = "აირჩიე პროდუქტის ფოტო.";
+    return;
+  }
+
+  const fileName =
+    Date.now() +
+    "-" +
+    file.name.replace(/\s+/g, "-");
+
+
+  const { error: uploadError } = await db.storage
+    .from("product-images")
+    .upload(fileName, file);
+
+
+  if (uploadError) {
+    productMessage.textContent =
+      "ფოტოს ატვირთვა ვერ მოხერხდა: " +
+      uploadError.message;
+    return;
+  }
+
+
+  const {
+    data: publicUrlData
+  } = db.storage
+    .from("product-images")
+    .getPublicUrl(fileName);
+
+
+  const product = {
+
+    name:
+      document.getElementById("name").value.trim(),
+
+    description:
+      document.getElementById("description").value.trim(),
+
+    category:
+      document.getElementById("category").value,
+
+    price:
+      Number(document.getElementById("price").value),
+
+    old_price:
+      document.getElementById("oldPrice").value
+        ? Number(document.getElementById("oldPrice").value)
+        : null,
+
+    stock:
+      Number(document.getElementById("stock").value),
+
+    image_url:
+      publicUrlData.publicUrl,
+
+    active: true
+  };
+
+
+  const { error } = await db
+    .from("products")
+    .insert(product);
+
+
+  if (error) {
+    productMessage.textContent =
+      "პროდუქტი ვერ დაემატა: " +
+      error.message;
+    return;
+  }
+
+
+  productMessage.textContent =
+    "პროდუქტი წარმატებით დაემატა ✅";
+
+  document.getElementById("productForm").reset();
+
+  document.getElementById("stock").value = 1;
+
+  loadProducts();
+
+});
+
+
+async function loadProducts() {
+
+  const { data, error } = await db
+    .from("products")
+    .select("*")
+    .order("created_at", {
+      ascending: false
+    });
+
+
+    if (error) {
+  console.error(error);
+  return;
+}
+
+
+  const list =
+    document.getElementById("productsList");
+
+  list.innerHTML = "";
+
+
+  if (!data.length) {
+
+    list.innerHTML =
+      "<p>პროდუქტები ჯერ არ არის დამატებული.</p>";
+
+    return;
+  }
+
+
+  data.forEach(product => {
+
+    const div =
+      document.createElement("div");
+
+    div.className = "product";
+
+
+    div.innerHTML = `
+
+      <img
+        src="${product.image_url || ""}"
+        alt=""
+      >
+
+      <div>
+        <strong>${product.name}</strong>
+        <p>${product.price} ₾</p>
+        <small>${product.category}</small>
+      </div>
+
+      <button
+        class="delete"
+        data-id="${product.id}">
+        წაშლა
+      </button>
+
+    `;
+
+
+    list.appendChild(div);
+
+  });
+
+}
+
+
+document
+  .getElementById("productsList")
+  .addEventListener("click", async (event) => {
+
+    if (!event.target.classList.contains("delete")) {
+      return;
+    }
+
+    const id =
+      event.target.dataset.id;
+
+    if (!confirm("ნამდვილად გინდა პროდუქტის წაშლა?")) {
+      return;
+    }
+
+    const { error } = await db
+      .from("products")
+      .delete()
+      .eq("id", id);
+
+
+    if (!error) {
+      loadProducts();
+    }
+
+  });
+
+
+checkSession();
+
+</script>
+
+</body>
+</html>

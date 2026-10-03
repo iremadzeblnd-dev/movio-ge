@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="ka">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111310">
+  <title>MOVIO — მართვის პანელი</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root{color-scheme:dark;--ink:#111310;--surface:#181b18;--surface2:#20231f;--line:#343834;--muted:#a8ada5;--paper:#f5f6f1;--accent:#c8ff2e;--danger:#ff7770;--sidebar:238px}
+    *{box-sizing:border-box}
+    body{margin:0;min-width:320px;background:var(--ink);color:var(--paper);font-family:"Noto Sans Georgian",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+    button,input,select,textarea{font:inherit}
+    button{cursor:pointer}
+    button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+    [hidden]{display:none!important}
+    .admin-shell{display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr);min-height:100vh}
+    .sidebar{position:sticky;top:0;display:flex;height:100vh;flex-direction:column;border-right:1px solid var(--line);padding:26px 16px;background:#151714}
+    .brand{margin:0 8px 38px;font-size:1rem;font-weight:900;letter-spacing:.04em}
+    .brand span{color:var(--accent)}
+    .nav-label{margin:0 10px 10px;color:#777d75;font-size:.62rem;font-weight:800}
+    .navigation{display:grid;gap:4px}
+    .navigation button{display:flex;align-items:center;gap:12px;min-height:44px;border:0;border-left:2px solid transparent;padding:0 12px;background:transparent;color:#c5c9c2;text-align:left;font-size:.76rem;font-weight:700}
+    .navigation button:hover,.navigation button[aria-current=page]{border-left-color:var(--accent);background:#20231f;color:var(--paper)}
+    .navigation button[aria-current=page]::after{width:7px;height:7px;margin-left:auto;background:var(--accent);content:""}
+    .nav-mark{width:20px;color:var(--accent);font-size:.9rem;text-align:center}
+    .sidebar-foot{margin-top:auto;border-top:1px solid var(--line);padding:18px 8px 0;color:var(--muted);font-size:.65rem;line-height:1.7}
+    .sidebar-foot strong{display:block;color:var(--accent);font-size:.68rem}
+    .workspace{min-width:0;padding:0 clamp(18px,3vw,42px) 56px}
+    .topbar{display:flex;min-height:88px;align-items:center;justify-content:space-between;gap:18px;border-bottom:1px solid var(--line)}
+    .topbar-title{margin:0;font-size:.76rem;color:var(--muted);font-weight:600}
+    .topbar-title strong{color:var(--paper)}
+    .demo-tag{border:1px solid #495239;padding:7px 10px;color:var(--accent);font-size:.62rem;font-weight:800;white-space:nowrap}
+    .page-heading{display:flex;align-items:end;justify-content:space-between;gap:20px;margin:34px 0 24px}
+    .page-heading h1{margin:0;font-size:clamp(1.3rem,2vw,1.8rem);font-weight:800}
+    .page-heading p{margin:8px 0 0;color:var(--muted);font-size:.72rem;line-height:1.7}
+    .primary-button,.quiet-button,.danger-button{min-height:40px;border:1px solid var(--accent);padding:0 14px;background:var(--accent);color:var(--ink);font-size:.7rem;font-weight:800}
+    .quiet-button{background:transparent;color:var(--accent)}
+    .danger-button{border-color:#763c39;background:#763c39;color:#fff}
+    .primary-button:disabled{opacity:.55;cursor:not-allowed}
+    .view{animation:arrive 180ms ease-out}
+    @keyframes arrive{from{opacity:.65;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+    .stats{display:grid;grid-template-columns:repeat(5,minmax(125px,1fr));gap:10px;margin-bottom:28px}
+    .stat{min-height:116px;border:1px solid var(--line);padding:17px;background:var(--surface)}
+    .stat-label{display:block;color:var(--muted);font-size:.66rem;font-weight:600;line-height:1.6}
+    .stat-value{display:block;margin-top:16px;font-size:1.4rem;font-weight:800;overflow-wrap:anywhere}
+    .stat-value.accent{color:var(--accent)}
+    .section-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:30px 0 14px}
+    .section-bar h2,.form-heading{margin:0;font-size:.94rem;font-weight:800}
+    .section-bar p{margin:0;color:var(--muted);font-size:.68rem}
+    .panel{border:1px solid var(--line);background:var(--surface)}
+    .table-wrap{width:100%;overflow:auto}
+    table{width:100%;border-collapse:collapse;text-align:left}
+    th{padding:12px 14px;background:#20231f;color:#9fa49c;font-size:.62rem;font-weight:700;white-space:nowrap}
+    td{border-top:1px solid var(--line);padding:13px 14px;font-size:.7rem;vertical-align:middle}
+    td strong{font-weight:700}
+    .muted{color:var(--muted)}
+    .order-number{color:var(--accent);font-weight:800;white-space:nowrap}
+    .status-select{min-width:135px;min-height:34px;margin:0;border:1px solid var(--line);padding:0 8px;background:var(--ink);color:var(--paper);font-size:.65rem}
+    .filters{display:flex;flex-wrap:wrap;gap:10px;min-width:0}
+    .filters input,.filters select{width:min(100%,260px);min-height:40px;margin:0;border:1px solid var(--line);padding:0 12px;background:var(--surface);color:var(--paper);font-size:.7rem}
+    .filters select{width:190px}
+    .product-row{display:grid;grid-template-columns:66px minmax(150px,1.4fr) minmax(100px,1fr) minmax(82px,.7fr) minmax(66px,.5fr) auto;gap:16px;align-items:center;border-top:1px solid var(--line);padding:14px}
+    .product-image{display:grid;width:62px;height:62px;place-items:center;overflow:hidden;background:#eceee8;color:#111310;font-size:.7rem;font-weight:900}
+    .product-image img{width:100%;height:100%;object-fit:contain}
+    .product-name{font-size:.72rem;font-weight:800;overflow-wrap:anywhere}
+    .product-meta{display:block;margin-top:5px;color:var(--muted);font-size:.62rem;overflow-wrap:anywhere}
+    .product-actions{display:flex;flex-wrap:wrap;gap:7px;justify-content:end}
+    .product-actions button{min-height:34px;padding:0 10px;font-size:.62rem}
+    .stock-low{color:var(--danger);font-weight:800}
+    .stock-available{color:#4bc66a;font-weight:800}
+    .stock-unavailable{color:var(--danger);font-weight:800}
+    .form-panel{margin:22px 0;padding:20px}
+    .form-heading{margin-bottom:18px}
+    .form-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 14px}
+    .field{min-width:0}
+    .field-full{grid-column:1/-1}
+    .field label{display:block;margin:0 0 7px;color:#c3c8c0;font-size:.66rem;font-weight:700}
+    .field-heading{display:flex;min-height:30px;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px}
+    .field-heading>label:first-child{margin:0}
+    .field-heading .stock-visibility-toggle{min-height:22px;margin:0!important;gap:0}
+    .field input,.field select,.field textarea{width:100%;min-height:42px;margin:0 0 14px;border:1px solid #3b403a;padding:10px 11px;background:var(--ink);color:var(--paper);font-size:.7rem}
+    .field textarea{min-height:90px;resize:vertical}
+    .stock-visibility-toggle{display:flex!important;align-items:center;gap:9px;width:fit-content;min-height:30px;margin:0 0 14px!important;color:#c3c8c0!important;cursor:pointer;font-size:.64rem!important;font-weight:700}
+    .stock-visibility-toggle input{position:absolute;width:1px;height:1px;margin:0;opacity:0}
+    .stock-visibility-track{position:relative;display:inline-flex;width:38px;height:22px;flex:0 0 38px;align-items:center;border:1px solid #62685d;background:#282c27;transition:background 140ms ease,border-color 140ms ease}
+    .stock-visibility-track::after{width:14px;height:14px;margin-left:3px;background:#a8ada5;content:"";transition:transform 140ms ease,background 140ms ease}
+    .stock-visibility-toggle input:checked+.stock-visibility-track{border-color:var(--accent);background:#33431c}
+    .stock-visibility-toggle input:checked+.stock-visibility-track::after{background:var(--accent);transform:translateX(16px)}
+    .stock-visibility-toggle input:focus-visible+.stock-visibility-track{outline:2px solid var(--accent);outline-offset:2px}
+    .form-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    .message{min-height:20px;margin:12px 0 0;color:var(--accent);font-size:.68rem}
+    .product-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:15px 14px;color:var(--muted);font-size:.62rem;font-weight:700}
+    .order-details{border-top:1px solid var(--line);padding-top:12px}
+    .order-details summary{color:var(--accent);cursor:pointer;font-size:.65rem;font-weight:700}
+    .detail-content{padding:12px 0;color:#c4c8c1;font-size:.66rem;line-height:1.8}
+    .detail-items{margin:8px 0 0;padding-left:18px}
+    .customer-history{display:grid;gap:10px;margin-top:18px}
+    .history-item{border-top:1px solid var(--line);padding:12px 0;font-size:.7rem;line-height:1.8}
+    dialog{width:min(720px,calc(100% - 28px));max-height:82vh;border:1px solid #62685d;padding:22px;background:#181b18;color:var(--paper)}
+    dialog::backdrop{background:rgba(0,0,0,.72)}
+    .dialog-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+    .dialog-head h2{margin:0;font-size:1rem}
+    .icon-button{width:36px;height:36px;border:1px solid var(--line);background:transparent;color:var(--paper);font-size:1.1rem}
+    .empty-state{padding:28px 14px;color:var(--muted);font-size:.72rem;text-align:center}
+    @media(max-width:1100px){.stats{grid-template-columns:repeat(3,minmax(130px,1fr))}.product-row{grid-template-columns:56px minmax(125px,1.4fr) minmax(90px,1fr) auto}.product-row .product-price,.product-row .product-stock{display:none}}
+    @media(max-width:760px){.admin-shell{display:block}.sidebar{position:sticky;z-index:10;top:0;width:100%;height:auto;border-right:0;border-bottom:1px solid var(--line);padding:12px 14px}.brand{margin:0 4px 10px}.nav-label,.sidebar-foot{display:none}.navigation{display:flex;gap:4px;overflow:auto}.navigation button{min-height:40px;border-left:0;border-bottom:2px solid transparent;padding:0 10px;white-space:nowrap;font-size:.66rem}.navigation button:hover,.navigation button[aria-current=page]{border-bottom-color:var(--accent);border-left-color:transparent}.navigation button[aria-current=page]::after{display:none}.nav-mark{width:auto}.workspace{padding:0 14px 38px}.topbar{min-height:62px}.page-heading{align-items:start;margin:25px 0 18px}.stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.stat{min-height:98px;padding:13px}.stat-value{margin-top:11px;font-size:1.18rem}.form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.product-row{grid-template-columns:48px minmax(0,1fr) auto;gap:10px;padding:12px}.product-image{width:46px;height:46px}.product-category,.product-row .product-price,.product-row .product-stock{display:none}.product-actions button{padding:0 8px}.section-bar{align-items:start;flex-direction:column}.filters{width:100%}.filters input,.filters select{width:100%;flex:1 1 180px}}
+    @media(max-width:420px){.navigation button{padding:0 8px}.navigation .nav-mark{display:none}.demo-tag{font-size:.55rem}.form-grid{grid-template-columns:1fr}.field-full{grid-column:auto}.page-heading h1{font-size:1.18rem}.product-row{grid-template-columns:42px minmax(0,1fr)}.product-actions{grid-column:2;justify-content:start}.product-image{width:40px;height:40px}}
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+    @media(max-width:760px){.product-row{grid-template-columns:46px minmax(0,1fr) auto;grid-template-rows:auto auto}.product-image{grid-column:1;grid-row:1/3}.product-row .product-stock{display:block;grid-column:2;grid-row:2}.product-actions{grid-column:3;grid-row:2;justify-content:end}}
+    @media(max-width:420px){.product-row{grid-template-columns:40px minmax(0,1fr) auto}.product-image{width:40px;height:40px}}
+  </style>
+  <style id="demo-mode">#loginPanel{display:none!important}</style>
+  <script src="store.js" defer></script>
+  <script src="admin.js" defer></script>
+</head>
+<body>
+  <div class="admin-shell" id="adminPanel">
+    <aside class="sidebar">
+      <p class="brand">MOVIO <span>ADMIN</span></p>
+      <p class="nav-label">მართვა</p>
+      <nav class="navigation" aria-label="მართვის განყოფილებები">
+        <button type="button" data-view-link="dashboard" aria-current="page"><span class="nav-mark">▦</span>მთავარი</button>
+        <button type="button" data-view-link="products"><span class="nav-mark">◈</span>პროდუქტები</button>
+        <button type="button" data-view-link="orders"><span class="nav-mark">↗</span>შეკვეთები</button>
+        <button type="button" data-view-link="customers"><span class="nav-mark">◎</span>მომხმარებლები</button>
+      </nav>
+      <div class="sidebar-foot local-demo-only" hidden><strong>დემო რეჟიმი</strong>მონაცემები ინახება ამ ბრაუზერში.</div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <p class="topbar-title"><strong>MOVIO</strong> / მართვის პანელი</p>
+        <span class="demo-tag local-demo-only" hidden>LOCAL DEMO</span>
+      </header>
+
+      <section class="view" id="view-dashboard" data-view="dashboard">
+        <div class="page-heading"><div><h1>მთავარი</h1><p>მაღაზიის მიმდინარე მაჩვენებლები</p></div></div>
+        <div class="stats" aria-label="მაღაზიის მაჩვენებლები">
+          <article class="stat"><span class="stat-label">სულ შეკვეთები</span><strong class="stat-value" id="metric-orders">0</strong></article>
+          <article class="stat"><span class="stat-label">ახალი შეკვეთები</span><strong class="stat-value accent" id="metric-new">0</strong></article>
+          <article class="stat"><span class="stat-label">დასრულებული შეკვეთები</span><strong class="stat-value" id="metric-completed">0</strong></article>
+          <article class="stat"><span class="stat-label">სულ გაყიდვები</span><strong class="stat-value accent" id="metric-sales">0 ₾</strong></article>
+          <article class="stat"><span class="stat-label">დაბალი მარაგი (≤ 3)</span><strong class="stat-value" id="metric-low-stock">0</strong></article>
+        </div>
+        <div class="section-bar"><h2>ბოლო შეკვეთები</h2><button class="quiet-button" type="button" data-view-link="orders">ყველა შეკვეთა</button></div>
+        <div class="panel table-wrap"><table><thead><tr><th>ნომერი</th><th>თარიღი</th><th>მომხმარებელი</th><th>ჯამი</th><th>სტატუსი</th></tr></thead><tbody id="latestOrders"></tbody></table><p class="empty-state" id="latestEmpty" hidden>შეკვეთები ჯერ არ არის.</p></div>
+      </section>
+
+      <section class="view" id="view-products" data-view="products" hidden>
+        <div class="page-heading"><div><h1>პროდუქტები</h1><p>კატალოგის მართვა და მარაგის განახლება</p></div><button class="primary-button" id="newProductButton" type="button">+ პროდუქტის დამატება</button></div>
+        <form class="panel form-panel" id="productForm" hidden>
+          <h2 class="form-heading" id="productFormHeading">ახალი პროდუქტი</h2>
+          <input type="hidden" name="id" id="productId">
+          <div class="form-grid">
+            <div class="field"><label for="productName">პროდუქტის სახელი</label><input id="productName" name="name" required maxlength="120"></div>
+            <div class="field"><label for="productCategory">კატეგორია</label><select id="productCategory" name="category" required><option value="electric-scooters">ელექტროსკუტერები</option><option value="electric-bikes">ელექტროველოსიპედები</option><option value="quad-bikes">კვადროციკლები</option><option value="car-accessories">მანქანის აქსესუარები</option></select></div>
+            <div class="field"><label for="productPrice">მიმდინარე ფასი (₾)</label><input id="productPrice" name="price" type="number" min="0.01" step="0.01" required></div>
+            <div class="field"><div class="field-heading"><label for="productOldPrice">ძველი ფასი (₾)</label><label class="stock-visibility-toggle" for="productOldPriceVisible" aria-label="ძველი ფასის ჩვენება"><input id="productOldPriceVisible" name="oldPriceVisible" type="checkbox" value="true" role="switch" checked><span class="stock-visibility-track" aria-hidden="true"></span></label></div><input id="productOldPrice" name="oldPrice" type="number" min="0" step="0.01"></div>
+            <div class="field"><div class="field-heading"><label for="productStock">მარაგი</label><label class="stock-visibility-toggle" for="productStockQuantityVisible" aria-label="მარაგის რაოდენობის ჩვენება"><input id="productStockQuantityVisible" name="stockQuantityVisible" type="checkbox" value="true" role="switch"><span class="stock-visibility-track" aria-hidden="true"></span></label></div><input id="productStock" name="stock" type="number" min="0" step="1" value="1" required></div>
+            <div class="field"><div class="field-heading"><label for="productStockStatus">მარაგის სტატუსი</label><label class="stock-visibility-toggle" for="productStockStatusVisible" aria-label="მარაგის სტატუსის ჩვენება"><input id="productStockStatusVisible" name="stockStatusVisible" type="checkbox" value="true" role="switch" checked><span class="stock-visibility-track" aria-hidden="true"></span></label></div><select id="productStockStatus" name="stockStatus" required><option value="მარაგშია">მარაგშია</option><option value="ამოიწურა">ამოიწურა</option></select></div>
+            <div class="field"><label for="productImage">ფოტო</label><input id="productImage" name="image" type="file" accept="image/*"></div>
+            <div class="field field-full"><label for="productDescription">აღწერა</label><textarea id="productDescription" name="description" maxlength="1000"></textarea></div>
+          </div>
+          <div class="form-actions"><button class="primary-button" type="submit">შენახვა</button><button class="quiet-button" id="cancelProductButton" type="button">გაუქმება</button></div>
+          <p class="message" id="productMessage" role="status"></p>
+        </form>
+        <div class="section-bar"><h2>კატალოგი <span class="muted" id="productCount"></span></h2><div class="filters"><input id="productSearch" type="search" placeholder="სახელით ძიება" aria-label="პროდუქტის ძიება"><select id="productCategoryFilter" aria-label="კატეგორიის ფილტრი"><option value="">ყველა კატეგორია</option><option value="electric-scooters">ელექტროსკუტერები</option><option value="electric-bikes">ელექტროველოსიპედები</option><option value="quad-bikes">კვადროციკლები</option><option value="car-accessories">მანქანის აქსესუარები</option></select></div></div>
+        <div class="panel" id="productsList"></div>
+      </section>
+
+      <section class="view" id="view-orders" data-view="orders" hidden>
+        <div class="page-heading"><div><h1>შეკვეთები</h1><p>მომხმარებლის შეკვეთები და მათი სტატუსები</p></div></div>
+        <div class="section-bar"><h2>ყველა შეკვეთა <span class="muted" id="orderCount"></span></h2><div class="filters"><input id="orderSearch" type="search" placeholder="ნომერი, სახელი, ტელეფონი" aria-label="შეკვეთების ძიება"><select id="orderStatusFilter" aria-label="სტატუსის ფილტრი"><option value="">ყველა სტატუსი</option><option value="new">ახალი</option><option value="confirmed">დადასტურებული</option><option value="preparing">მზადდება</option><option value="shipped">გაგზავნილი</option><option value="completed">დასრულებული</option><option value="cancelled">გაუქმებული</option></select></div></div>
+        <div class="panel table-wrap"><table><thead><tr><th>ნომერი / თარიღი</th><th>მომხმარებელი</th><th>პროდუქტები</th><th>ჯამი</th><th>სტატუსი</th><th>დეტალები</th></tr></thead><tbody id="ordersList"></tbody></table><p class="empty-state" id="ordersEmpty" hidden>შეკვეთები ვერ მოიძებნა.</p></div>
+      </section>
+
+      <section class="view" id="view-customers" data-view="customers" hidden>
+        <div class="page-heading"><div><h1>მომხმარებლები</h1><p>მომხმარებლების სია შეკვეთებიდან ავტომატურად იქმნება</p></div></div>
+        <div class="section-bar"><h2>მომხმარებლები <span class="muted" id="customerCount"></span></h2><div class="filters"><input id="customerSearch" type="search" placeholder="სახელი, ტელეფონი ან ქალაქი" aria-label="მომხმარებლების ძიება"></div></div>
+        <div class="panel table-wrap"><table><thead><tr><th>სახელი</th><th>ტელეფონი</th><th>ქალაქი</th><th>შეკვეთები</th><th>სულ დახარჯა</th><th></th></tr></thead><tbody id="customersList"></tbody></table><p class="empty-state" id="customersEmpty" hidden>მომხმარებლები ჯერ არ არის.</p></div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="customerDialog" aria-labelledby="customerDialogTitle"><div class="dialog-head"><h2 id="customerDialogTitle">შეკვეთების ისტორია</h2><button class="icon-button" id="closeCustomerDialog" type="button" aria-label="დახურვა">×</button></div><div class="customer-history" id="customerHistory"></div></dialog>
+  <script>window.addEventListener("load",()=>{setTimeout(()=>{const login=document.getElementById("loginPanel");const admin=document.getElementById("adminPanel");if(login)login.style.display="none";if(admin)admin.style.display="";},300);});</script>
+</body>
+</html>
