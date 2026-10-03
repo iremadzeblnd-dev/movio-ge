@@ -332,141 +332,77 @@ document.body.classList.add("cart-open");
   focusWithoutScroll(cartSection);
 }
 
+function renderProductCard(article, product) {
+  article.classList.add("compact-product-card");
+  article.removeAttribute("tabindex");
+  const existingArt = article.querySelector(".placeholder-art")?.cloneNode(true);
+  const copy = createTextElement("div", "category-detail-copy");
+  const title = document.createElement("h3");
+  title.id = `${article.id}-title`;
+  article.setAttribute("aria-labelledby", title.id);
+  const link = createTextElement("a", "product-card-link", product.name);
+  link.href = `item.html?item=${encodeURIComponent(product.id)}`;
+  title.appendChild(link);
+  const price = createTextElement("span", "product-price-label", formatPrice(product.price));
+  const actions = createTextElement("div", "product-actions");
+  const buy = createTextElement("button", "add-to-cart product-buy");
+  buy.type = "button";
+  buy.dataset.productId = product.id;
+  buy.appendChild(createTextElement("span", "add-label", "\u10e8\u10d4\u10eb\u10d4\u10dc\u10d0"));
+  buy.disabled = Number(product.stock) < 1;
+  const cart = createTextElement("button", "add-to-cart product-cart");
+  cart.type = "button";
+  cart.dataset.productId = product.id;
+  cart.setAttribute("aria-label", `${product.name}: \u10d9\u10d0\u10da\u10d0\u10d7\u10d0\u10e8\u10d8 \u10d3\u10d0\u10db\u10d0\u10e2\u10d4\u10d1\u10d0`);
+  cart.disabled = buy.disabled;
+  const icon = createTextElement("span", "add-icon");
+  icon.setAttribute("aria-hidden", "true");
+  icon.appendChild(createCartIcon());
+  cart.appendChild(icon);
+  actions.append(buy, cart);
+  copy.append(title, price, actions);
+  const media = createTextElement("div", "product-media");
+  if (product.image) {
+    const image = document.createElement("img");
+    image.src = product.image;
+    image.alt = product.name;
+    image.loading = "lazy";
+    image.decoding = "async";
+    media.appendChild(image);
+  } else if (existingArt) {
+    media.classList.add("product-media--art");
+    media.appendChild(existingArt);
+  } else {
+    media.appendChild(createTextElement("span", "product-no-image", "MOVIO"));
+  }
+  syncDiscountBadge(media, product);
+  article.replaceChildren(media, copy);
+}
+
 function renderManagedProducts() {
   const mount = document.querySelector("[data-managed-products]");
   if (!mount) return;
-
   const customProducts = window.MovioStore.getProducts().filter((product) => !PRODUCTS[product.id] && product.active !== false);
-  const articles = customProducts.map((product, index) => {
+  const articles = customProducts.map((product) => {
     const article = document.createElement("article");
-    article.className = `category-detail${index % 2 ? " category-detail--reverse" : ""} managed-product`;
+    article.className = "category-detail managed-product";
     article.id = `managed-${product.id}`;
-    article.id = `managed-${product.id}`;
-    const copy = document.createElement("div");
-    copy.className = "category-detail-copy";
-    const category = document.createElement("span");
-    category.className = "detail-index";
-    category.textContent = `MOVIO / ${CATEGORY_LABELS[product.category] || product.category}`;
-    const title = document.createElement("h3");
-    title.textContent = product.name;
-    const description = document.createElement("p");
-    description.textContent = product.description || "";
-    const price = createTextElement("span", "product-price-label", formatPrice(product.price));
-    const oldPrice = product.oldPriceVisible !== false && Number(product.oldPrice) > 0
-      ? createTextElement("del", "product-old-price-label", formatPrice(product.oldPrice))
-      : null;
-    const availability = createTextElement("span", "product-availability", window.MovioStore.getStockLabel(product));
-    availability.hidden = product.stockStatusVisible === false;
-    setStockStatusClass(availability, product);
-    const quantity = product.stockQuantityVisible === true
-      ? createTextElement("span", "product-stock-quantity", `რაოდენობა: ${product.stock} ცალი`)
-      : null;
-    const actions = document.createElement("div");
-    actions.className = "product-actions";
-    const button = document.createElement("button");
-    button.className = "add-to-cart";
-    button.type = "button";
-    button.dataset.productId = product.id;
-    const buttonLabel = createTextElement("span", "add-label", "კალათაში");
-    const buttonIcon = createTextElement("span", "add-icon");
-    buttonIcon.setAttribute("aria-hidden", "true");
-    buttonIcon.appendChild(createCartIcon());
-    button.append(buttonLabel, buttonIcon);
-    setProductButtonState(button, product);
-    const details = createTextElement("a", "product-details-link", "დეტალურად");
-    const categoryPages = {
-  "electric-scooters": "electric-scooters.html",
-  "ელექტრო სკუტერები": "electric-scooters.html",
-  "electric-bikes": "electric-bikes.html",
-  "ელექტრო ველოსიპედები": "electric-bikes.html",
-  "quad-bikes": "quad-bikes.html",
-  "კვადრო ციკლები": "quad-bikes.html",
-  "car-accessories": "car-accessories.html",
-  "მანქანის აქსესუარები": "car-accessories.html"
-};
-
-const detailPage = categoryPages[product.category];
-
-details.href = `item.html?item=${encodeURIComponent(product.id)}`;
-    actions.append(button, details);
-    copy.append(...[category, title, description, price, oldPrice, availability, quantity, actions].filter(Boolean));
-
-    const media = document.createElement("div");
-    media.className = "product-media";
-    const label = document.createElement("span");
-    label.className = "product-label";
-    label.textContent = product.name;
-    media.appendChild(label);
-    syncDiscountBadge(media, product);
-    if (product.image) {
-      const image = document.createElement("img");
-      image.src = product.image;
-      image.alt = product.name;
-      image.loading = "lazy";
-      media.appendChild(image);
-    }
-    article.append(copy, media);
+    renderProductCard(article, product);
     return article;
   });
   replaceContent(mount, articles);
 }
 
 function syncCatalogProducts() {
-  document.querySelectorAll(".category-detail .add-to-cart[data-product-id]").forEach((button) => {
+  document.querySelectorAll(".category-detail:not(.managed-product)").forEach((article) => {
+    const button = article.querySelector(".add-to-cart[data-product-id]");
+    if (!button) return;
     const product = getProduct(button.dataset.productId);
     if (!product) {
-      button.disabled = true;
-      button.textContent = "პროდუქტი მიუწვდომელია";
+      article.querySelectorAll(".add-to-cart").forEach((control) => { control.disabled = true; });
       return;
     }
-    const article = button.closest(".category-detail");
-    const title = article.querySelector(".category-detail-copy h3");
-    const description = article.querySelector(".category-detail-copy > p:not(.section-index)");
-    let availability = article.querySelector(".product-availability");
-    if (title) title.textContent = product.name;
-    if (description) description.textContent = product.description;
-    let price = article.querySelector(".product-price-label");
-    if (!price && availability) {
-      price = document.createElement("span");
-      price.className = "product-price-label";
-      availability.insertAdjacentElement("beforebegin", price);
-    }
-    if (price) price.textContent = formatPrice(product.price);
-    let oldPrice = article.querySelector(".product-old-price-label");
-    if (product.oldPriceVisible !== false && Number(product.oldPrice) > 0) {
-      if (!oldPrice) {
-        oldPrice = document.createElement("del");
-        oldPrice.className = "product-old-price-label";
-        if (price) price.insertAdjacentElement("afterend", oldPrice);
-      }
-      oldPrice.textContent = formatPrice(product.oldPrice);
-    } else {
-      oldPrice?.remove();
-    }
-    if (availability) {
-      availability.textContent = window.MovioStore.getStockLabel(product);
-      availability.hidden = product.stockStatusVisible === false;
-      setStockStatusClass(availability, product);
-    }
-    let quantity = article.querySelector(".product-stock-quantity");
-    if (product.stockQuantityVisible === true) {
-      if (!quantity) {
-        quantity = document.createElement("span");
-        quantity.className = "product-stock-quantity";
-        availability?.insertAdjacentElement("afterend", quantity);
-      }
-      quantity.textContent = `რაოდენობა: ${product.stock} ცალი`;
-    } else {
-      quantity?.remove();
-    }
-    const image = article.querySelector(".product-media img");
-    if (image && product.image) {
-      image.src = product.image;
-      image.alt = product.name;
-    }
-    const media = article.querySelector(".product-media");
-    if (media) syncDiscountBadge(media, product);
-    setProductButtonState(button, product);
+    renderProductCard(article, product);
   });
   renderManagedProducts();
   applyCatalogFilter(activeCategoryFilter);
@@ -767,23 +703,3 @@ window.addEventListener("load", () => {
     }
   }
 });
-
-
-
-
-
-
-/* ყველა პროდუქტის "დეტალურად" ღილაკის ავტომატური მიბმა */
-document.querySelectorAll(".product-details-link").forEach((link) => {
-  const card = link.closest(".category-detail");
-  if (!card) return;
-
-  const productButton = card.querySelector("[data-product-id]");
-  const productId = productButton?.dataset.productId;
-
-  if (productId) {
-    link.href = `item.html?item=${encodeURIComponent(productId)}`;
-    link.removeAttribute("data-category-filter");
-  }
-});
-
