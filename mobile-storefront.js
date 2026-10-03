@@ -1,6 +1,10 @@
 (function () {
   if (!window.matchMedia("(max-width: 760px)").matches) return;
 
+  document.querySelectorAll('a[href="#categories"]').forEach((link) => {
+    if (!document.querySelector("#categories")) link.setAttribute("href", "#catalog");
+  });
+
   // Category pages use the older detail markup without storefront handlers.
   const legacyProductId = document.body.dataset.productId;
   if (!legacyProductId) {
@@ -45,13 +49,15 @@
   try {
     const cart = JSON.parse(localStorage.getItem("movio-cart") || "[]");
     const count = Array.isArray(cart) ? cart.reduce((sum, item) => sum + Number(item.quantity || 0), 0) : 0;
-    document.querySelector(".cart-count").textContent = count;
-    document.querySelector(".header-cart-link").setAttribute("aria-label", `კალათა, ${count} პროდუქტი`);
+    const countBadge = document.querySelector(".cart-count");
+    if (countBadge) countBadge.textContent = count;
+    document.querySelector(".header-cart-link")?.setAttribute("aria-label", `კალათა, ${count} პროდუქტი`);
   } catch (error) {
     // A malformed local cart should not disable the search or detail controls.
   }
 
   const form = document.querySelector(".search-form");
+  if (!form) return;
   const input = document.querySelector("#site-search");
   const results = document.querySelector(".search-results");
   const message = document.querySelector(".search-message");
