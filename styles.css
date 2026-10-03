@@ -5405,3 +5405,79 @@ img[src*="movio-logo-final.svg"]{
     font-size: 15px;
   }
 }
+
+/* Homepage decoration uses the M from the MOVIO wordmark. */
+.hero-brand-visual {
+  position: relative;
+  right: auto;
+  bottom: auto;
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  padding: 8px 14px;
+  overflow: hidden;
+  opacity: 1;
+  background: radial-gradient(ellipse at 78% 50%, rgba(200, 255, 46, 0.07), transparent 65%);
+}
+
+.hero-brand-visual::before {
+  content: none;
+}
+
+.hero-brand-watermark {
+  display: block;
+  width: min(72%, 340px);
+  height: auto;
+  max-height: 100%;
+  justify-self: end;
+  overflow: visible;
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 11;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+  opacity: 0.18;
+}
+
+.brand-speed {
+  position: absolute;
+  left: 6%;
+  width: 42%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(200, 255, 46, 0.26), transparent);
+  transform: rotate(-12deg);
+  pointer-events: none;
+}
+
+.brand-speed-one { top: 32%; width: 48%; }
+.brand-speed-two { top: 51%; }
+.brand-speed-three { top: 70%; width: 34%; }
+
+@media (max-width: 719px) {
+  .hero-brand-visual {
+    height: 96px;
+    min-height: 0;
+    flex: 0 0 96px;
+  }
+
+  .hero-brand-watermark {
+    width: 100px;
+    max-height: 80px;
+    opacity: 0.22;
+  }
+}
+
+@media (min-width: 360px) and (max-width: 430px) {
+  .hero-brand-visual {
+    height: 72px;
+    flex-basis: 72px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+
+  .hero-brand-watermark {
+    width: 88px;
+    max-height: 64px;
+  }
+}
