@@ -1,51 +1,6 @@
-(function () {
+﻿(function () {
   const STORAGE_KEY = "movio-data-v1";
-  const DEMO_PRODUCTS = [
-    {
-      id: "scooter-s1",
-      name: "ელექტრო სკუტერი",
-      category: "electric-scooters",
-      price: 1790,
-      oldPrice: 1990,
-      stock: 6,
-      description: "სადემონსტრაციო პროდუქტი MOVIO-ს კატალოგიდან.",
-      image: "scooter-red.png",
-      active: true,
-    },
-    {
-      id: "ebike-city",
-      name: "ქალაქის ელექტროველოსიპედი",
-      category: "electric-bikes",
-      price: 2390,
-      oldPrice: null,
-      stock: 4,
-      description: "სადემონსტრაციო პროდუქტი MOVIO-ს კატალოგიდან.",
-      image: "",
-      active: true,
-    },
-    {
-      id: "quad-x4",
-      name: "კვადროციკლი X4",
-      category: "quad-bikes",
-      price: 3290,
-      oldPrice: null,
-      stock: 3,
-      description: "სადემონსტრაციო პროდუქტი MOVIO-ს კატალოგიდან.",
-      image: "cyadro-2.jpg",
-      active: true,
-    },
-    {
-      id: "auto-kit",
-      name: "მანქანის აქსესუარი",
-      category: "car-accessories",
-      price: 120,
-      oldPrice: null,
-      stock: 12,
-      description: "სადემონსტრაციო პროდუქტი MOVIO-ს კატალოგიდან.",
-      image: "",
-      active: true,
-    },
-  ];
+  const DEMO_PRODUCTS = [];
   let memoryState;
 
   function clone(value) {
@@ -251,3 +206,4 @@
     getCustomers,
   };
 })();
+
