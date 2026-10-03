@@ -17,6 +17,8 @@
       image: product.image || "",
       active: product.active !== false,
       old_price_visible: product.oldPriceVisible !== false,
+      discount_visible: product.discountVisible === true,
+      discount_percent: Number(product.discountPercent ?? 0),
       stock_quantity_visible: product.stockQuantityVisible === true,
       stock_status_visible: product.stockStatusVisible !== false,
       stock_status:
@@ -39,6 +41,8 @@
       image: row.image || "",
       active: row.active !== false,
       oldPriceVisible: row.old_price_visible !== false,
+      discountVisible: row.discount_visible === true,
+      discountPercent: Number(row.discount_percent ?? 0),
       stockQuantityVisible: row.stock_quantity_visible === true,
       stockStatusVisible: row.stock_status_visible !== false,
       stockStatus:

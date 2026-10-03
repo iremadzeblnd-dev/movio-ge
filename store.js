@@ -77,6 +77,14 @@
               updatedProduct.stockQuantityVisible = false;
               migrated = true;
             }
+            if (typeof updatedProduct.discountVisible !== "boolean") {
+              updatedProduct.discountVisible = false;
+              migrated = true;
+            }
+            if (updatedProduct.discountPercent == null) {
+              updatedProduct.discountPercent = 0;
+              migrated = true;
+            }
             return updatedProduct;
           });
           if (migrated) {
@@ -113,6 +121,11 @@
     delete savedProduct.stockDisplayMode;
     savedProduct.stockStatusVisible = savedProduct.stockStatusVisible !== false;
     savedProduct.oldPriceVisible = savedProduct.oldPriceVisible !== false;
+    savedProduct.discountVisible = savedProduct.discountVisible === true;
+    savedProduct.discountPercent = Number(savedProduct.discountPercent ?? 0);
+    if (!Number.isFinite(savedProduct.discountPercent) || savedProduct.discountPercent < 0 || savedProduct.discountPercent > 100) {
+      throw new Error("ფასდაკლების პროცენტი უნდა იყოს 0-დან 100-მდე.");
+    }
     savedProduct.stockQuantityVisible = savedProduct.stockQuantityVisible === true;
     if (!["მარაგშია", "ამოიწურა"].includes(savedProduct.stockStatus)) {
       savedProduct.stockStatus = Number(savedProduct.stock) > 0 ? "მარაგშია" : "ამოიწურა";

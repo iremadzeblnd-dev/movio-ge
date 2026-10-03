@@ -80,23 +80,22 @@ function setStockStatusClass(element, product) {
 }
 
 function getDiscountPercent(product) {
-  if (product.oldPriceVisible === false || Number(product.oldPrice) <= Number(product.price) || Number(product.oldPrice) <= 0) return 0;
-  return Math.round((1 - Number(product.price) / Number(product.oldPrice)) * 100);
+  if (product?.discountVisible !== true) return 0;
+
+  const percent = Number(product?.discountPercent || 0);
+
+  if (!Number.isFinite(percent) || percent <= 0) return 0;
+
+  return Math.min(99, Math.round(percent));
 }
 
 function syncDiscountBadge(media, product) {
-  const percent = getDiscountPercent(product);
-  let badge = media.querySelector(".product-discount");
-  if (!percent) {
-    badge?.remove();
-    return;
-  }
-  if (!badge) {
-    badge = document.createElement("span");
-    badge.className = "product-discount";
-    media.prepend(badge);
-  }
-  badge.textContent = `-${percent}%`;
+  media?.querySelectorAll(".product-discount").forEach((badge) => badge.remove());
+  if (!media || product.discountVisible !== true) return;
+  const badge = document.createElement("span");
+  badge.className = "product-discount";
+  badge.textContent = `-${getDiscountPercent(product)}%`;
+  media.prepend(badge);
 }
 
 function setProductButtonState(button, product) {

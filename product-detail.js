@@ -51,6 +51,13 @@ if (!product) {
   const addButton = document.querySelector("#detailAdd");
   const addLabel = addButton?.querySelector(".add-label");
 
+  if (product.discountVisible === true) {
+    const badge = document.createElement("span");
+    badge.className = "product-discount";
+    badge.textContent = `-${Number(product.discountPercent ?? 0)}%`;
+    image.closest("figure")?.prepend(badge);
+  }
+
   const productName = product.name || "პროდუქტი";
   const productCategory = product.category || "—";
 

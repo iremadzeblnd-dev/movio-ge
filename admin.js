@@ -229,6 +229,8 @@ function resetProductForm() {
   document.querySelector("#productStock").value = 1;
   document.querySelector("#productStockStatus").value = "მარაგშია";
   document.querySelector("#productOldPriceVisible").checked = true;
+  document.querySelector("#productDiscountVisible").checked = false;
+  document.querySelector("#productDiscountPercent").value = 0;
   document.querySelector("#productStockQuantityVisible").checked = false;
   document.querySelector("#productStockStatusVisible").checked = true;
   document.querySelector("#productFormHeading").textContent = "ახალი პროდუქტი";
@@ -248,6 +250,8 @@ function editProduct(product) {
   document.querySelector("#productStock").value = product.stock;
   document.querySelector("#productStockStatus").value = MovioStore.getStockLabel(product);
   document.querySelector("#productOldPriceVisible").checked = product.oldPriceVisible !== false;
+  document.querySelector("#productDiscountVisible").checked = product.discountVisible === true;
+  document.querySelector("#productDiscountPercent").value = product.discountPercent ?? 0;
   document.querySelector("#productStockQuantityVisible").checked = product.stockQuantityVisible === true;
   document.querySelector("#productStockStatusVisible").checked = product.stockStatusVisible !== false;
   document.querySelector("#productDescription").value = product.description || "";
@@ -314,6 +318,8 @@ document.querySelector("#productForm").addEventListener("submit", async (event) 
       stock: Number(data.get("stock")),
       stockStatus: data.get("stockStatus"),
       oldPriceVisible: data.get("oldPriceVisible") !== null,
+      discountVisible: data.get("discountVisible") !== null,
+      discountPercent: Number(data.get("discountPercent")),
       stockQuantityVisible: data.get("stockQuantityVisible") !== null,
       stockStatusVisible: data.get("stockStatusVisible") !== null,
       description: data.get("description").trim(),
