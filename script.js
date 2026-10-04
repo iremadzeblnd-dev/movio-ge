@@ -104,12 +104,7 @@ class CartStore {
       return;
     }
 
-    if (quantity < 1) {
-      this.remove(productId);
-      return;
-    }
-
-    item.quantity = Math.min(quantity, product.stock, 99);
+    item.quantity = Math.max(1, Math.min(quantity, Number(product.stock), 99));
     this.save();
   }
 
@@ -248,26 +243,22 @@ function createCartItem(cartItem) {
   const quantity = document.createElement("div");
   quantity.className = "quantity-control";
   quantity.setAttribute("aria-label", `${product.name} რაოდენობა`);
-  [["decrease", "−", "რაოდენობის შემცირება"], ["increase", "+", "რაოდენობის გაზრდა"]].forEach(([action, label, ariaLabel], index) => {
-    const control = document.createElement(index === 0 ? "button" : "output");
-    if (index !== 1) {
+  [["decrease", "−", "რაოდენობის შემცირება"], [null, cartItem.quantity, null], ["increase", "+", "რაოდენობის გაზრდა"]].forEach(([action, label, ariaLabel]) => {
+    const control = document.createElement(action ? "button" : "output");
+    if (action) {
       control.type = "button";
       control.dataset.cartAction = action;
       control.setAttribute("aria-label", ariaLabel);
       control.textContent = label;
+      control.disabled = action === "increase"
+        ? cartItem.quantity >= Math.min(Number(product.stock), 99)
+        : cartItem.quantity <= 1;
     } else {
       control.setAttribute("aria-live", "polite");
       control.textContent = cartItem.quantity;
     }
     quantity.appendChild(control);
   });
-  const increase = document.createElement("button");
-  increase.type = "button";
-  increase.dataset.cartAction = "increase";
-  increase.setAttribute("aria-label", "რაოდენობის გაზრდა");
-  increase.textContent = "+";
-  increase.disabled = cartItem.quantity >= Math.min(Number(product.stock), 99);
-  quantity.appendChild(increase);
 
   const price = document.createElement("span");
   price.className = "cart-item-price";
@@ -275,6 +266,7 @@ function createCartItem(cartItem) {
   if (modernCart) {
     price.textContent = formatPrice(product.price * cartItem.quantity);
     price.setAttribute("aria-label", "პროდუქტის ჯამური ფასი");
+    copy.append(price);
     const controls = document.createElement("div");
     controls.className = "cart-item-controls";
     const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -642,17 +634,16 @@ cartItems.addEventListener("click", (event) => {
   const item = event.target.closest(".cart-item");
   if (!actionButton || !item) return;
 
-  const productId = item.dataset.productId;
-  const cartItem = cartStore.items.find((currentItem) => currentItem.id === productId);
+  const cartItem = cartStore.items.find((currentItem) => String(currentItem.id) === item.dataset.productId);
   if (!cartItem) return;
+  const productId = cartItem.id;
 
   if (actionButton.dataset.cartAction === "increase") {
     cartStore.setQuantity(productId, cartItem.quantity + 1);
     cartStatus.textContent = "რაოდენობა განახლდა.";
   } else if (actionButton.dataset.cartAction === "decrease") {
-    const willRemoveItem = cartItem.quantity === 1;
-    cartStore.setQuantity(productId, cartItem.quantity - 1);
-    cartStatus.textContent = willRemoveItem ? "პროდუქტი წაიშალა კალათიდან." : "რაოდენობა განახლდა.";
+    cartStore.setQuantity(productId, Math.max(1, cartItem.quantity - 1));
+    cartStatus.textContent = "რაოდენობა განახლდა.";
   } else if (actionButton.dataset.cartAction === "remove") {
     cartStore.remove(productId);
     cartStatus.textContent = "პროდუქტი წაიშალა კალათიდან.";
