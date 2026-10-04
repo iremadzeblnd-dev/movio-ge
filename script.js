@@ -274,7 +274,17 @@ function createCartItem(cartItem) {
   if (modernCart) {
     price.textContent = formatPrice(product.price * cartItem.quantity);
     price.setAttribute("aria-label", "პროდუქტის ჯამური ფასი");
-    item.append(media, copy, quantity, remove, price);
+    const controls = document.createElement("div");
+    controls.className = "cart-item-controls";
+    const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    icon.setAttribute("viewBox", "0 0 24 24");
+    icon.setAttribute("aria-hidden", "true");
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", "M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 10v7M14 10v7");
+    icon.append(path);
+    remove.replaceChildren(icon);
+    controls.append(quantity, remove);
+    item.append(media, copy, controls);
   } else item.append(media, copy, quantity, price);
 
   return item;

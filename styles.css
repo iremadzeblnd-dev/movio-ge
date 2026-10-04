@@ -5786,3 +5786,30 @@ img[src*="movio-logo-final.svg"]{
   .cart-page .cart-item-price { grid-column: 2 / 4; grid-row: 3; font-size: 12px; }
   .cart-page .cart-summary { padding: 18px; }
 }
+
+/* Replacement cart layout: one horizontal item, with controls on the right. */
+.cart-horizontal-page .cart-item { display: grid; grid-template-columns: 80px minmax(0,1fr) 108px; grid-template-rows: auto; gap: 12px; padding: 12px; min-height: 0; }
+.cart-horizontal-page .cart-item-media { grid-column: auto; grid-row: auto; width: 80px; height: 80px; }
+.cart-horizontal-page .cart-item-copy { grid-column: auto; grid-row: auto; align-self: center; }
+.cart-horizontal-page .cart-item-controls { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; min-width: 0; }
+.cart-horizontal-page .quantity-control { display: grid; grid-column: auto; grid-row: auto; margin: 0; grid-template-columns: repeat(3,36px); }
+.cart-horizontal-page .quantity-control button, .cart-horizontal-page .quantity-control output { width: 36px; height: 40px; }
+.cart-horizontal-page .cart-remove { display: grid; place-items: center; grid-column: auto; grid-row: auto; align-self: auto; width: 40px; min-height: 36px; border: 0; color: #a5af9f; }
+.cart-horizontal-page .cart-remove svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.cart-horizontal-page .cart-remove:hover { color: var(--accent); background: #20291b; }
+@media (max-width: 600px) {
+  .cart-horizontal-page #cart { padding: 16px 10px 28px; min-height: 0; }
+  .cart-horizontal-page .cart-heading { gap: 6px; margin-bottom: 14px; }
+  .cart-horizontal-page .cart-items { gap: 8px; }
+  .cart-horizontal-page .cart-item { grid-template-columns: 62px minmax(0,1fr) 96px; gap: 9px; padding: 10px; border-radius: 12px; }
+  .cart-horizontal-page .cart-item-media { width: 62px; height: 70px; padding: 5px; border-radius: 8px; }
+  .cart-horizontal-page .cart-item-copy h3 { font-size: 12px; line-height: 1.4; }
+  .cart-horizontal-page .cart-unit-pricing { margin-top: 6px; gap: 5px; }
+  .cart-horizontal-page .cart-unit-pricing strong { font-size: 15px; }
+  .cart-horizontal-page .cart-unit-pricing del { font-size: 11px; }
+  .cart-horizontal-page .quantity-control { grid-template-columns: repeat(3,32px); }
+  .cart-horizontal-page .quantity-control button, .cart-horizontal-page .quantity-control output { width: 32px; height: 38px; }
+  .cart-horizontal-page .cart-layout { display: grid; grid-template-columns: minmax(0,1fr); align-items: start; gap: 16px; }
+  .cart-horizontal-page .cart-content { min-width: 0; }
+  .cart-horizontal-page .cart-summary { position: static; margin: 0; }
+}
