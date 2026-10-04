@@ -1940,7 +1940,7 @@ h1 em {
   list-style: none;
 }
 
-.cart-item {
+body:not(.cart-page) .cart-item {
   display: grid;
   grid-template-columns: 82px minmax(0, 1fr) auto;
   gap: 16px;
@@ -1949,7 +1949,7 @@ h1 em {
   padding: 18px 0;
 }
 
-.cart-item-media {
+body:not(.cart-page) .cart-item-media {
   display: grid;
   width: 82px;
   height: 82px;
@@ -1961,7 +1961,7 @@ h1 em {
   color: var(--ink);
 }
 
-.cart-item-media img {
+body:not(.cart-page) .cart-item-media img {
   display: block;
   width: 100%;
   height: 100%;
@@ -1970,17 +1970,17 @@ h1 em {
   mix-blend-mode: multiply;
 }
 
-.cart-item-media span {
+body:not(.cart-page) .cart-item-media span {
   color: #20231f;
   font-size: 1rem;
   font-weight: 900;
 }
 
-.cart-item-copy {
+body:not(.cart-page) .cart-item-copy {
   min-width: 0;
 }
 
-.cart-item-copy > span {
+body:not(.cart-page) .cart-item-copy > span {
   display: block;
   margin-bottom: 6px;
   color: var(--muted);
@@ -1990,7 +1990,7 @@ h1 em {
   word-break: normal;
 }
 
-.cart-item-copy h3 {
+body:not(.cart-page) .cart-item-copy h3 {
   margin: 0;
   font-size: 0.82rem;
   line-height: 1.5;
@@ -1998,7 +1998,7 @@ h1 em {
   word-break: normal;
 }
 
-.cart-remove {
+body:not(.cart-page) .cart-remove {
   border: 0;
   border-bottom: 1px solid #62675f;
   padding: 0 0 2px;
@@ -2009,13 +2009,13 @@ h1 em {
   font-size: 0.68rem;
 }
 
-.cart-remove:hover,
-.cart-remove:focus-visible {
+body:not(.cart-page) .cart-remove:hover,
+body:not(.cart-page) .cart-remove:focus-visible {
   border-color: var(--accent);
   color: var(--paper);
 }
 
-.quantity-control {
+body:not(.cart-page) .quantity-control {
   display: grid;
   grid-column: 2;
   grid-row: 2;
@@ -2025,8 +2025,8 @@ h1 em {
   border: 1px solid var(--line);
 }
 
-.quantity-control button,
-.quantity-control output {
+body:not(.cart-page) .quantity-control button,
+body:not(.cart-page) .quantity-control output {
   display: grid;
   width: 34px;
   height: 34px;
@@ -2038,17 +2038,17 @@ h1 em {
   font-size: 0.76rem;
 }
 
-.quantity-control button {
+body:not(.cart-page) .quantity-control button {
   cursor: pointer;
 }
 
-.quantity-control button:hover,
-.quantity-control button:focus-visible {
+body:not(.cart-page) .quantity-control button:hover,
+body:not(.cart-page) .quantity-control button:focus-visible {
   background: var(--accent);
   color: var(--ink);
 }
 
-.cart-item-price {
+body:not(.cart-page) .cart-item-price {
   grid-column: 2 / -1;
   grid-row: 3;
   align-self: center;
@@ -2637,28 +2637,28 @@ footer {
     gap: 34px;
   }
 
-  .cart-item {
+  body:not(.cart-page) .cart-item {
     grid-template-columns: 104px minmax(0, 1fr) auto auto;
     gap: 22px;
     padding: 22px 0;
   }
 
-  .cart-item-media {
+  body:not(.cart-page) .cart-item-media {
     width: 104px;
     height: 104px;
     padding: 10px;
   }
 
-  .cart-item-copy h3 {
+  body:not(.cart-page) .cart-item-copy h3 {
     font-size: 0.9rem;
   }
 
-  .quantity-control {
+  body:not(.cart-page) .quantity-control {
     grid-column: 3;
     grid-row: 1;
   }
 
-  .cart-item-price {
+  body:not(.cart-page) .cart-item-price {
     grid-column: 4;
     grid-row: 1;
     max-width: 190px;
@@ -5075,12 +5075,12 @@ img[src*="movio-logo-final.svg"]{
     overflow-wrap: anywhere;
   }
 
-  .quantity-control {
+  body:not(.cart-page) .quantity-control {
     grid-template-columns: repeat(3, 44px);
   }
 
-  .quantity-control button,
-  .quantity-control output {
+  body:not(.cart-page) .quantity-control button,
+  body:not(.cart-page) .quantity-control output {
     width: 44px;
     height: 44px;
     min-width: 44px;
@@ -5099,7 +5099,7 @@ img[src*="movio-logo-final.svg"]{
     min-height: 44px;
   }
 
-  .cart-item {
+  body:not(.cart-page) .cart-item {
     min-width: 0;
   }
 
@@ -5520,7 +5520,7 @@ img[src*="movio-logo-final.svg"]{
 .detail-purchase-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
 .detail-cart-message { min-height: 1.6em; margin: 12px 0 0; color: var(--accent); font-size: 13px; line-height: 1.6; }
 .item-page .item-page-description { white-space: pre-line; overflow-wrap: anywhere; line-height: 1.75; }
-.quantity-control button:disabled { opacity: 0.4; cursor: not-allowed; }
+body:not(.cart-page) .quantity-control button:disabled { opacity: 0.4; cursor: not-allowed; }
 @media (max-width: 600px) {
   .detail-header-actions { gap: 10px; }
   .item-page .item-page-header .wordmark { width: 112px; }
@@ -5757,20 +5757,13 @@ img[src*="movio-logo-final.svg"]{
 .cart-page .cart-heading h2 { font-size: clamp(24px, 5vw, 36px); }
 .cart-page .cart-heading-count { font-size: 12px; }
 .cart-page .cart-items { display: grid; gap: 12px; border: 0; }
-.cart-page .cart-item { grid-template-columns: 96px minmax(0,1fr) 44px; grid-template-rows: auto auto; gap: 12px; align-items: center; border: 1px solid rgba(255,255,255,.12); border-radius: 16px; padding: 14px; background: #141912; }
-.cart-page .cart-item-media { grid-column: 1; grid-row: 1 / 3; width: 96px; height: 108px; border-radius: 10px; text-decoration: none; background: #eef0e9; }
 .cart-page .cart-item-media img { mix-blend-mode: normal; }
-.cart-page .cart-item-copy { grid-column: 2; grid-row: 1; }
 .cart-page .cart-item-copy h3 { font-size: 14px; line-height: 1.5; }
 .cart-page .cart-item-copy h3 a { color: var(--paper); text-decoration: none; }
 .cart-page .cart-item-copy h3 a:hover { color: var(--accent); }
 .cart-page .cart-unit-pricing { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-top: 8px; }
 .cart-page .cart-unit-pricing strong { color: var(--accent); font-size: 17px; }
 .cart-page .cart-unit-pricing del { color: var(--muted); font-size: 12px; }
-.cart-page .quantity-control { grid-column: 2; grid-row: 2; border-radius: 9px; overflow: hidden; grid-template-columns: repeat(3, 38px); }
-.cart-page .quantity-control button, .cart-page .quantity-control output { width: 38px; height: 40px; }
-.cart-page .cart-remove { grid-column: 3; grid-row: 1; align-self: start; min-height: 44px; width: 44px; padding: 0; border: 1px solid var(--line); border-radius: 9px; font-size: 10px; }
-.cart-page .cart-item-price { grid-column: 3; grid-row: 2; text-align: right; font-size: 12px; color: var(--paper); }
 .cart-page .cart-summary { border: 1px solid rgba(255,255,255,.12); border-radius: 16px; background: #141912; padding: 22px; }
 .cart-page .checkout-submit { border-radius: 10px; min-height: 50px; }
 .cart-page .checkout-form input, .cart-page .checkout-form textarea, .cart-page .checkout-form select { border-radius: 8px; }
@@ -5779,11 +5772,8 @@ img[src*="movio-logo-final.svg"]{
   .cart-page #cart { padding: 20px 12px 32px; }
   .cart-page .cart-heading { align-items: start; flex-direction: column; margin-bottom: 18px; }
   .cart-page .cart-layout { grid-template-columns: minmax(0,1fr); gap: 20px; }
-  .cart-page .cart-item { grid-template-columns: 76px minmax(0,1fr) 44px; padding: 12px; gap: 10px; }
-  .cart-page .cart-item-media { width: 76px; height: 94px; }
   .cart-page .cart-item-copy h3 { font-size: 13px; }
   .cart-page .cart-unit-pricing strong { font-size: 16px; }
-  .cart-page .cart-item-price { grid-column: 2 / 4; grid-row: 3; font-size: 12px; }
   .cart-page .cart-summary { padding: 18px; }
 }
 
@@ -5813,3 +5803,17 @@ img[src*="movio-logo-final.svg"]{
   .cart-horizontal-page .cart-content { min-width: 0; }
   .cart-horizontal-page .cart-summary { position: static; margin: 0; }
 }
+
+/* Base styles for the standalone cart; legacy embedded-cart selectors are excluded. */
+.cart-horizontal-page .cart-item-media { display: grid; place-items: center; overflow: hidden; padding: 5px; background: #eef0e9; text-decoration: none; }
+.cart-horizontal-page .cart-item-media img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.cart-horizontal-page .cart-item-copy { min-width: 0; }
+.cart-horizontal-page .cart-item-copy h3 { margin: 0; overflow-wrap: anywhere; }
+.cart-horizontal-page .quantity-control { width: fit-content; align-items: center; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+.cart-horizontal-page .quantity-control button, .cart-horizontal-page .quantity-control output { display: grid; place-items: center; padding: 0; border: 0; background: transparent; color: var(--paper); font: inherit; font-size: 13px; }
+.cart-horizontal-page .quantity-control button { cursor: pointer; }
+.cart-horizontal-page .quantity-control button:disabled { opacity: .4; cursor: not-allowed; }
+.cart-horizontal-page .quantity-control button:hover:not(:disabled) { background: var(--accent); color: var(--ink); }
+.cart-horizontal-page .cart-remove { background: transparent; cursor: pointer; }
+.cart-horizontal-page .cart-item { border: 1px solid rgba(255,255,255,.12); background: #141912; align-items: center; border-radius: 12px; }
+.cart-horizontal-page .cart-item-media { border-radius: 8px; }

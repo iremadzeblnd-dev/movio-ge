@@ -193,6 +193,7 @@ function createCartItem(cartItem) {
   const item = document.createElement("li");
   item.className = "cart-item";
   item.dataset.productId = product.id;
+  // cart.html always uses this single horizontal-card renderer, on every viewport.
   const modernCart = document.body.classList.contains("cart-page");
   const detailUrl = `item.html?item=${encodeURIComponent(product.id)}`;
 
