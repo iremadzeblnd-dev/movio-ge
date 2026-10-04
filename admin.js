@@ -225,6 +225,7 @@ function showView(viewName) {
 function resetProductForm() {
   const form = document.querySelector("#productForm");
   form.reset();
+  document.querySelector("#productSpecifications").replaceChildren();
   document.querySelector("#productId").value = "";
   document.querySelector("#productStock").value = 1;
   document.querySelector("#productStockStatus").value = "მარაგშია";
@@ -237,6 +238,31 @@ function resetProductForm() {
   document.querySelector("#productMessage").textContent = "";
   form.hidden = true;
 }
+
+function addSpecificationRow(specification = {}) {
+  const row = document.createElement("div");
+  row.className = "admin-specification-row";
+  const label = document.createElement("input");
+  label.name = "specificationLabel";
+  label.placeholder = "დასახელება";
+  label.setAttribute("aria-label", "მახასიათებლის დასახელება");
+  label.maxLength = 100;
+  label.value = specification.label || "";
+  const value = document.createElement("input");
+  value.name = "specificationValue";
+  value.placeholder = "მნიშვნელობა";
+  value.setAttribute("aria-label", "მახასიათებლის მნიშვნელობა");
+  value.maxLength = 500;
+  value.value = specification.value || "";
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.textContent = "წაშლა";
+  remove.addEventListener("click", () => row.remove());
+  row.append(label, value, remove);
+  document.querySelector("#productSpecifications").append(row);
+}
+
+document.querySelector("#addSpecificationButton").addEventListener("click", () => addSpecificationRow());
 
 function editProduct(product) {
   const form = document.querySelector("#productForm");
@@ -255,6 +281,8 @@ function editProduct(product) {
   document.querySelector("#productStockQuantityVisible").checked = product.stockQuantityVisible === true;
   document.querySelector("#productStockStatusVisible").checked = product.stockStatusVisible !== false;
   document.querySelector("#productDescription").value = product.description || "";
+  document.querySelector("#productSpecifications").replaceChildren();
+  (Array.isArray(product.specifications) ? product.specifications : []).forEach(addSpecificationRow);
   document.querySelector("#productMessage").textContent = "ფოტოს არჩევის გარეშე არსებული ფოტო შენარჩუნდება.";
   form.scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -323,6 +351,10 @@ document.querySelector("#productForm").addEventListener("submit", async (event) 
       stockQuantityVisible: data.get("stockQuantityVisible") !== null,
       stockStatusVisible: data.get("stockStatusVisible") !== null,
       description: data.get("description").trim(),
+      specifications: data.getAll("specificationLabel").map((label, index) => ({
+        label: label.trim(),
+        value: String(data.getAll("specificationValue")[index] || "").trim(),
+      })).filter((entry) => entry.label || entry.value),
       image: image || previous?.image || "",
       active: true,
     };

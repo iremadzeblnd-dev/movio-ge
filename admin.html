@@ -176,6 +176,14 @@
   border-radius:8px;
 }
 
+    .product-specifications-editor h3{margin:0;font-size:1rem}
+    .product-specifications-editor p{color:var(--muted);font-size:.75rem;line-height:1.6}
+    #productSpecifications{display:grid;gap:8px}
+    .admin-specification-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:8px}
+    .admin-specification-row input{min-width:0;width:100%}
+    .product-specifications-editor button{padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface2);color:var(--accent)}
+    #addSpecificationButton{margin-top:10px;align-self:start}
+    @media(max-width:600px){.admin-specification-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.admin-specification-row button{grid-column:1/-1}}
 </style>
   
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -280,6 +288,12 @@
             <div class="field"><div class="field-heading"><label for="productStockStatus">მარაგის სტატუსი</label><label class="stock-visibility-toggle" for="productStockStatusVisible" aria-label="მარაგის სტატუსის ჩვენება"><input id="productStockStatusVisible" name="stockStatusVisible" type="checkbox" value="true" role="switch" checked><span class="stock-visibility-track" aria-hidden="true"></span></label></div><select id="productStockStatus" name="stockStatus" required><option value="მარაგშია">მარაგშია</option><option value="ამოიწურა">ამოიწურა</option></select></div>
             <div class="field"><label for="productImage">ფოტო</label><input id="productImage" name="image" type="file" accept="image/*"></div>
             <div class="field field-full"><label for="productDescription">აღწერა</label><textarea id="productDescription" name="description" maxlength="1000"></textarea></div>
+            <section class="field field-full product-specifications-editor" aria-labelledby="specificationsHeading">
+              <h3 id="specificationsHeading">მახასიათებლები</h3>
+              <p>დაამატეთ დასახელება და მნიშვნელობა — სიმძლავრე, ბატარეა, სიჩქარე, მანძილი, დატვირთვა, ფერი, მოდელი და სხვა.</p>
+              <div id="productSpecifications"></div>
+              <button id="addSpecificationButton" type="button">+ მახასიათებლის დამატება</button>
+            </section>
           </div>
           <div class="form-actions"><button class="primary-button" type="submit">შენახვა</button><button class="quiet-button" id="cancelProductButton" type="button">გაუქმება</button></div>
           <p class="message" id="productMessage" role="status"></p>

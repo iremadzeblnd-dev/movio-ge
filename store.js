@@ -80,6 +80,15 @@
   function saveProduct(product) {
     const state = readState();
     const savedProduct = { ...product };
+    savedProduct.specifications = Array.isArray(savedProduct.specifications)
+      ? savedProduct.specifications.map((entry) => ({
+        label: String(entry?.label || "").trim(),
+        value: String(entry?.value || "").trim(),
+      })).filter((entry) => entry.label || entry.value)
+      : [];
+    if (savedProduct.specifications.some((entry) => !entry.label || !entry.value)) {
+      throw new Error("მახასიათებლის დასახელება და მნიშვნელობა ორივე შეავსეთ.");
+    }
     delete savedProduct.stockDisplayMode;
     savedProduct.stockStatusVisible = savedProduct.stockStatusVisible !== false;
     savedProduct.oldPriceVisible = savedProduct.oldPriceVisible !== false;

@@ -193,9 +193,15 @@ function createCartItem(cartItem) {
   const item = document.createElement("li");
   item.className = "cart-item";
   item.dataset.productId = product.id;
+  const modernCart = document.body.classList.contains("cart-page");
+  const detailUrl = `item.html?item=${encodeURIComponent(product.id)}`;
 
-  const media = document.createElement("div");
+  const media = document.createElement(modernCart ? "a" : "div");
   media.className = "cart-item-media";
+  if (modernCart) {
+    media.href = detailUrl;
+    media.setAttribute("aria-label", product.name);
+  }
   if (product.image) {
     const image = document.createElement("img");
     image.src = product.image;
@@ -212,13 +218,31 @@ function createCartItem(cartItem) {
   const category = document.createElement("span");
   category.textContent = product.category;
   const name = document.createElement("h3");
-  name.textContent = product.name;
+  if (modernCart) {
+    const link = document.createElement("a");
+    link.href = detailUrl;
+    link.textContent = product.name;
+    name.append(link);
+  } else name.textContent = product.name;
   const remove = document.createElement("button");
   remove.className = "cart-remove";
   remove.type = "button";
   remove.dataset.cartAction = "remove";
   remove.textContent = "წაშლა";
-  copy.append(category, name, remove);
+  remove.setAttribute("aria-label", `${product.name} — წაშლა`);
+  if (modernCart) {
+    const pricing = document.createElement("div");
+    pricing.className = "cart-unit-pricing";
+    const current = document.createElement("strong");
+    current.textContent = formatPrice(product.price);
+    pricing.append(current);
+    if (product.oldPriceVisible !== false && Number(product.oldPrice) > 0) {
+      const old = document.createElement("del");
+      old.textContent = formatPrice(product.oldPrice);
+      pricing.append(old);
+    }
+    copy.append(name, pricing);
+  } else copy.append(category, name, remove);
 
   const quantity = document.createElement("div");
   quantity.className = "quantity-control";
@@ -247,7 +271,11 @@ function createCartItem(cartItem) {
   const price = document.createElement("span");
   price.className = "cart-item-price";
   price.textContent = `${formatPrice(product.price)} × ${cartItem.quantity} = ${formatPrice(product.price * cartItem.quantity)}`;
-  item.append(media, copy, quantity, price);
+  if (modernCart) {
+    price.textContent = formatPrice(product.price * cartItem.quantity);
+    price.setAttribute("aria-label", "პროდუქტის ჯამური ფასი");
+    item.append(media, copy, quantity, remove, price);
+  } else item.append(media, copy, quantity, price);
 
   return item;
 }

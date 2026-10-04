@@ -10,16 +10,16 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=specifications-20261005">
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabaseClient.js" defer></script>
 <script src="store.js" defer></script>
 <script src="supabase-sync.js" defer></script>
-  <script src="product-detail.js" defer></script>
+  <script src="product-detail.js?v=specifications-20261005" defer></script>
 </head>
 
-<body class="item-page">
+<body class="item-page item-page-ecommerce">
 
   <header class="item-page-header">
     <a class="wordmark" href="index.html#top">
@@ -57,8 +57,10 @@
 
       <div class="item-page-copy">
 
-        <p class="item-page-index">
-          MOVIO / <span id="detailCategory">პროდუქტი</span>
+        <p class="item-page-index detail-top-line">
+          <span class="detail-discount-badge" id="detailDiscountBadge" hidden></span>
+          <span class="detail-stock-badge" id="detailStockBadge" hidden>მარაგშია</span>
+          <span class="detail-category-label">MOVIO / <span id="detailCategory">პროდუქტი</span></span>
         </p>
 
         <h1 id="detailTitle">პროდუქტი</h1>
@@ -68,15 +70,27 @@
           <span id="detailOldPriceRow" hidden><del id="detailOldPrice">—</del></span>
         </div>
 
+        <div class="detail-purchase-actions">
+          <button class="item-page-add detail-add" id="detailAdd" type="button">კალათაში დამატება</button>
+          <button class="item-page-add detail-buy" id="detailBuy" type="button">ყიდვა ახლავე</button>
+        </div>
+        <p class="detail-cart-message" id="detailCartMessage" role="status" aria-live="polite"></p>
+
+      </div>
+
+        <section class="detail-description-section detail-content-panel" aria-labelledby="descriptionTitle">
+        <h2 id="descriptionTitle">პროდუქტის აღწერა</h2>
         <p
           class="item-page-description"
           id="detailDescription">
         </p>
+        </section>
 
-        <section class="item-page-facts">
-          <h2>პროდუქტის ინფორმაცია</h2>
+        <section class="item-page-facts detail-content-panel" aria-labelledby="featuresTitle">
+          <h2 id="featuresTitle">მახასიათებლები</h2>
 
           <dl>
+            <div class="detail-specifications" id="detailSpecifications"></div>
 
             <div>
               <dt>კატეგორია</dt>
@@ -96,19 +110,14 @@
           </dl>
         </section>
 
-        <div class="detail-purchase-actions">
-          <button class="item-page-add detail-buy" id="detailBuy" type="button">ყიდვა</button>
-          <button class="item-page-add detail-add" id="detailAdd" type="button">კალათაში დამატება</button>
-        </div>
-        <p class="detail-cart-message" id="detailCartMessage" role="status" aria-live="polite"></p>
-
-        <a class="item-page-back" href="index.html#catalog">
-          ← კატალოგში დაბრუნება
-        </a>
-
-      </div>
 
     </article>
+
+    <section class="detail-related" id="detailRelated" hidden aria-labelledby="relatedTitle">
+      <h2 id="relatedTitle">მსგავსი პროდუქტები</h2>
+      <div class="detail-related-grid" id="detailRelatedGrid"></div>
+      <p class="detail-related-empty" id="detailRelatedEmpty" hidden>ამ კატეგორიაში სხვა პროდუქტები ჯერ არ არის.</p>
+    </section>
 
     <section
       class="item-page-not-found"

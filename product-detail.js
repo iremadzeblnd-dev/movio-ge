@@ -52,13 +52,10 @@ if (!product) {
   const buyButton = document.querySelector("#detailBuy");
   const message = document.querySelector("#detailCartMessage");
 
-  const media = image.closest("figure");
-  media?.querySelectorAll(".product-discount").forEach((badge) => badge.remove());
+  const discountBadge = document.querySelector("#detailDiscountBadge");
+  discountBadge.hidden = product.discountVisible !== true;
   if (product.discountVisible === true) {
-    const badge = document.createElement("span");
-    badge.className = "product-discount";
-    badge.textContent = `-${Number(product.discountPercent ?? 0)}%`;
-    media?.prepend(badge);
+    discountBadge.textContent = `-${Number(product.discountPercent ?? 0)}%`;
   }
 
   const productName = product.name || "პროდუქტი";
@@ -78,6 +75,19 @@ if (!product) {
 
   category.textContent = productCategory;
   categoryRow.textContent = productCategory;
+
+  const specifications = document.querySelector("#detailSpecifications");
+  (Array.isArray(product.specifications) ? product.specifications : []).forEach((entry) => {
+    if (!entry || !entry.label || !entry.value) return;
+    const row = document.createElement("div");
+    row.className = "detail-specification-row";
+    const label = document.createElement("dt");
+    label.textContent = entry.label;
+    const value = document.createElement("dd");
+    value.textContent = entry.value;
+    row.append(label, value);
+    specifications.append(row);
+  });
 
   price.textContent = formatPrice(product.price);
 
@@ -139,6 +149,7 @@ if (!product) {
     stockLabel === "მარაგშია" &&
     Number(product.stock) > 0;
 
+  document.querySelector("#detailStockBadge").hidden = !available || product.stockStatusVisible === false;
   addButton.disabled = !available;
   buyButton.disabled = !available;
   if (!available) message.textContent = "პროდუქტი ამჟამად არ არის მარაგში.";
@@ -162,6 +173,7 @@ if (!product) {
   function addSelectedProduct(openCart) {
     const current = window.MovioStore.getProducts().find((item) => item.id === product.id && item.active !== false);
     if (!current || window.MovioStore.getStockLabel(current) !== "მარაგშია" || Number(current.stock) < 1) {
+      document.querySelector("#detailStockBadge").hidden = true;
       addButton.disabled = true;
       buyButton.disabled = true;
       message.textContent = "პროდუქტი ამჟამად არ არის მარაგში.";
@@ -192,4 +204,32 @@ if (!product) {
   });
 
   document.title = `MOVIO — ${productName}`;
+
+  const relatedProducts = products.filter((item) => item.active !== false &&
+    String(item.id) !== String(product.id) && item.category === product.category).slice(0, 4);
+  const relatedGrid = document.querySelector("#detailRelatedGrid");
+  relatedProducts.forEach((item) => {
+    const link = document.createElement("a");
+    link.className = "detail-related-card";
+    link.href = `item.html?item=${encodeURIComponent(item.id)}`;
+    const media = document.createElement("div");
+    media.className = "detail-related-media";
+    if (item.image) {
+      const picture = document.createElement("img");
+      picture.src = item.image;
+      picture.alt = item.name || "პროდუქტი";
+      picture.loading = "lazy";
+      media.append(picture);
+    } else {
+      media.textContent = "ფოტო არ არის";
+    }
+    const name = document.createElement("h3");
+    name.textContent = item.name || "პროდუქტი";
+    const cost = document.createElement("strong");
+    cost.textContent = formatPrice(item.price);
+    link.append(media, name, cost);
+    relatedGrid.append(link);
+  });
+  document.querySelector("#detailRelated").hidden = false;
+  document.querySelector("#detailRelatedEmpty").hidden = relatedProducts.length > 0;
 }
