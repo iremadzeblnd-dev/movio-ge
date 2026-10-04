@@ -284,7 +284,7 @@ function createCartItem(cartItem) {
     path.setAttribute("d", "M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 10v7M14 10v7");
     icon.append(path);
     remove.replaceChildren(icon);
-    controls.append(quantity, remove);
+    controls.append(remove, quantity);
     item.append(media, copy, controls);
   } else item.append(media, copy, quantity, price);
 
@@ -308,6 +308,10 @@ function renderCart() {
   }, 0);
   cartSubtotal.textContent = formatPrice(subtotal);
   cartTotal.textContent = formatPrice(subtotal);
+  const mobileTotal = document.querySelector("#mobileCartTotal");
+  if (mobileTotal) mobileTotal.textContent = formatPrice(subtotal);
+  const mobileCheckout = document.querySelector("#mobileCartCheckout");
+  if (mobileCheckout) mobileCheckout.disabled = !hasItems;
   const checkoutForm = document.querySelector("#checkoutForm");
   if (checkoutForm) checkoutForm.hidden = !hasItems;
   const demoCheckoutButton = document.querySelector("#demoCheckoutButton");
@@ -317,6 +321,14 @@ function renderCart() {
     demoCheckoutButton.hidden = !localDemoHost || !hasItems || !paymentUnavailable || typeof window.MovioStore?.createOrder !== "function";
   }
 }
+
+document.querySelector("#mobileCartCheckout")?.addEventListener("click", () => {
+  const form = document.querySelector("#checkoutForm");
+  if (!form || form.hidden) return;
+  document.body.classList.add("mobile-checkout-open");
+  form.scrollIntoView({ behavior: "smooth", block: "start" });
+  form.querySelector("input")?.focus({ preventScroll: true });
+});
 
 function goToCart(productName) {
   cartStatus.textContent = `${productName} დაემატა კალათაში.`;
@@ -665,13 +677,19 @@ syncCatalogProducts();
 renderCart();
 window.addEventListener("hashchange", () => {
   if (window.location.hash === "#cart") {
+    if (!document.body.classList.contains("cart-page")) {
+      window.location.replace("cart.html");
+      return;
+    }
     document.body.classList.add("cart-open");
   } else {
     document.body.classList.remove("cart-open");
   }
 });
 
-if (window.location.hash === "#cart") {
+if (window.location.hash === "#cart" && !document.body.classList.contains("cart-page")) {
+  window.location.replace("cart.html");
+} else if (window.location.hash === "#cart") {
   document.body.classList.add("cart-open");
 }
 
