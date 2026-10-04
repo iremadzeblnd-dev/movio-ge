@@ -40,7 +40,7 @@
     }
     addButton.disabled = Number(product.stock) < 1 || product.stockStatus === "ამოიწურა";
     addButton.addEventListener("click", () => {
-      if (window.MovioStore.addToCart(product.id)) location.href = "index.html#cart";
+      if (window.MovioStore.addToCart(product.id)) location.href = "cart.html";
     });
   } else {
     addButton.disabled = true;

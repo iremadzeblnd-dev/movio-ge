@@ -10,7 +10,7 @@ const products =
     : [];
 
 const product = products.find(
-  (item) => String(item.id) === String(productId)
+  (item) => String(item.id) === String(productId) && item.active !== false
 );
 
 function formatPrice(value) {
@@ -49,7 +49,8 @@ if (!product) {
   const quantity = document.querySelector("#detailQuantity");
 
   const addButton = document.querySelector("#detailAdd");
-  const addLabel = addButton?.querySelector(".add-label");
+  const buyButton = document.querySelector("#detailBuy");
+  const message = document.querySelector("#detailCartMessage");
 
   const media = image.closest("figure");
   media?.querySelectorAll(".product-discount").forEach((badge) => badge.remove());
@@ -61,7 +62,13 @@ if (!product) {
   }
 
   const productName = product.name || "პროდუქტი";
-  const productCategory = product.category || "—";
+  const categoryLabels = {
+    "electric-scooters": "ელექტრო სკუტერები",
+    "electric-bikes": "ელექტრო ველოსიპედები",
+    "quad-bikes": "კვადრო ციკლები",
+    "car-accessories": "მანქანის აქსესუარები",
+  };
+  const productCategory = categoryLabels[product.category] || product.category || "—";
 
   title.textContent = productName;
 
@@ -83,6 +90,7 @@ if (!product) {
         : "ამოიწურა";
 
   stock.textContent = stockLabel;
+  stock.parentElement.hidden = product.stockStatusVisible === false;
 
   stock.classList.toggle(
     "stock-available",
@@ -132,24 +140,55 @@ if (!product) {
     Number(product.stock) > 0;
 
   addButton.disabled = !available;
+  buyButton.disabled = !available;
+  if (!available) message.textContent = "პროდუქტი ამჟამად არ არის მარაგში.";
 
-  if (addLabel) {
-    addLabel.textContent =
-      available ? "კალათაში" : "ამოიწურა";
+  function updateCartCount() {
+    try {
+      const cart = JSON.parse(localStorage.getItem("movio-cart") || "[]");
+      const currentProducts = window.MovioStore.getProducts();
+      const count = Array.isArray(cart) ? cart.reduce((sum, item) => {
+        const current = currentProducts.find((entry) => entry.id === item.id && entry.active !== false);
+        if (!current || window.MovioStore.getStockLabel(current) !== "მარაგშია" || !Number.isInteger(item.quantity) || item.quantity < 1) return sum;
+        return sum + Math.min(item.quantity, Number(current.stock), 99);
+      }, 0) : 0;
+      document.querySelector("#detailCartCount").textContent = count;
+      document.querySelector(".detail-header-cart").setAttribute("aria-label", `კალათა, ${count} პროდუქტი`);
+    } catch (error) {
+      document.querySelector("#detailCartCount").textContent = "0";
+    }
   }
 
-  addButton.addEventListener("click", () => {
-
-    if (!available) return;
-
-    if (
-      window.MovioStore &&
-      typeof window.MovioStore.addToCart === "function" &&
-      window.MovioStore.addToCart(product.id)
-    ) {
-      window.location.href = "index.html#cart";
+  function addSelectedProduct(openCart) {
+    const current = window.MovioStore.getProducts().find((item) => item.id === product.id && item.active !== false);
+    if (!current || window.MovioStore.getStockLabel(current) !== "მარაგშია" || Number(current.stock) < 1) {
+      addButton.disabled = true;
+      buyButton.disabled = true;
+      message.textContent = "პროდუქტი ამჟამად არ არის მარაგში.";
+      return;
     }
-
+    let previousQuantity = 0;
+    try {
+      const cart = JSON.parse(localStorage.getItem("movio-cart") || "[]");
+      if (Array.isArray(cart)) previousQuantity = Number(cart.find((item) => item.id === current.id)?.quantity) || 0;
+    } catch (error) {
+      // The store reports malformed cart data as an unsuccessful add below.
+    }
+    if (!window.MovioStore.addToCart(current.id)) {
+      message.textContent = "კალათაში დამატება ვერ მოხერხდა. სცადეთ ხელახლა.";
+      return;
+    }
+    updateCartCount();
+    message.textContent = previousQuantity >= Math.min(Number(current.stock), 99)
+      ? "პროდუქტი უკვე კალათაშია — მიღწეულია მარაგის მაქსიმუმი."
+      : "პროდუქტი დაემატა კალათაში.";
+    if (openCart) window.location.href = "cart.html";
+  }
+  addButton.addEventListener("click", () => addSelectedProduct(false));
+  buyButton.addEventListener("click", () => addSelectedProduct(true));
+  updateCartCount();
+  window.addEventListener("storage", (event) => {
+    if (event.key === "movio-cart") updateCartCount();
   });
 
   document.title = `MOVIO — ${productName}`;

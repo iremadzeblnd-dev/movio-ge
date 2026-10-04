@@ -65,7 +65,7 @@ class CartStore {
 
       const products = new Map(window.MovioStore.getProducts().map((product) => [product.id, product]));
       return savedItems
-        .filter((item) => products.has(item.id) && products.get(item.id).active !== false && products.get(item.id).stock > 0 && Number.isInteger(item.quantity) && item.quantity > 0)
+        .filter((item) => products.has(item.id) && products.get(item.id).active !== false && products.get(item.id).stock > 0 && window.MovioStore.getStockLabel(products.get(item.id)) === "მარაგშია" && Number.isInteger(item.quantity) && item.quantity > 0)
         .map((item) => ({ id: item.id, quantity: Math.min(item.quantity, products.get(item.id).stock, 99) }));
     } catch (error) {
       return [];
@@ -82,7 +82,7 @@ class CartStore {
 
   add(productId) {
     const product = getProduct(productId);
-    if (!product || product.stock < 1) return;
+    if (!product || product.stock < 1 || window.MovioStore.getStockLabel(product) !== "მარაგშია") return;
 
     const existingItem = this.items.find((item) => item.id === productId);
 
@@ -99,7 +99,7 @@ class CartStore {
     const item = this.items.find((cartItem) => cartItem.id === productId);
     if (!item) return;
     const product = getProduct(productId);
-    if (!product || product.stock < 1) {
+    if (!product || product.stock < 1 || window.MovioStore.getStockLabel(product) !== "მარაგშია") {
       this.remove(productId);
       return;
     }
@@ -241,6 +241,7 @@ function createCartItem(cartItem) {
   increase.dataset.cartAction = "increase";
   increase.setAttribute("aria-label", "რაოდენობის გაზრდა");
   increase.textContent = "+";
+  increase.disabled = cartItem.quantity >= Math.min(Number(product.stock), 99);
   quantity.appendChild(increase);
 
   const price = document.createElement("span");
@@ -281,12 +282,7 @@ function renderCart() {
 function goToCart(productName) {
   cartStatus.textContent = `${productName} დაემატა კალათაში.`;
 
-  if (window.location.hash !== "#cart") {
-    window.location.hash = "cart";
-  }
-document.body.classList.add("cart-open");
-  cartSection.scrollIntoView(true);
-  focusWithoutScroll(cartSection);
+  window.location.href = "cart.html";
 }
 
 function renderProductCard(article, product) {
@@ -305,8 +301,8 @@ function renderProductCard(article, product) {
   const buy = createTextElement("button", "add-to-cart product-buy");
   buy.type = "button";
   buy.dataset.productId = product.id;
-  buy.appendChild(createTextElement("span", "add-label", "\u10e8\u10d4\u10eb\u10d4\u10dc\u10d0"));
-  buy.disabled = Number(product.stock) < 1;
+  buy.appendChild(createTextElement("span", "add-label", "ყიდვა"));
+  buy.disabled = Number(product.stock) < 1 || window.MovioStore.getStockLabel(product) !== "მარაგშია";
   const cart = createTextElement("button", "add-to-cart product-cart");
   cart.type = "button";
   cart.dataset.productId = product.id;
@@ -523,10 +519,14 @@ document.addEventListener("click", (event) => {
   const button = event.target.closest(".add-to-cart[data-product-id]");
   if (!button || button.disabled) return;
   const product = getProduct(button.dataset.productId);
-  if (!product) return;
+  if (!product || product.stock < 1 || window.MovioStore.getStockLabel(product) !== "მარაგშია") return;
 
   cartStore.add(product.id);
   renderCart();
+  if (button.classList.contains("product-buy")) {
+    window.location.href = "cart.html";
+    return;
+  }
   goToCart(product.name);
 });
 

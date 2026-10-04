@@ -5454,6 +5454,66 @@ img[src*="movio-logo-final.svg"]{
 .brand-speed-two { top: 51%; }
 .brand-speed-three { top: 70%; width: 34%; }
 
+/* Product detail and purchase actions. */
+.item-page .item-page-header { min-height: 78px; }
+.detail-header-actions { display: flex; align-items: center; gap: 16px; }
+.detail-header-cart {
+  display: inline-flex;
+  min-width: 58px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--paper);
+}
+.detail-header-cart svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+}
+.detail-header-cart b { color: var(--accent); font-size: 13px; }
+.item-page .item-page-detail { max-width: 1200px; margin: 0 auto; }
+.item-page .item-page-media {
+  height: clamp(280px, 75vw, 500px);
+  aspect-ratio: auto;
+  background: #eef0e9;
+}
+.item-page .item-page-copy h1 { font-size: clamp(26px, 5vw, 40px); line-height: 1.25; }
+.detail-pricing { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; margin-top: 18px; }
+.detail-pricing strong { color: var(--accent); font-size: 30px; font-weight: 800; }
+.detail-pricing del { color: var(--muted); font-size: 16px; }
+.detail-purchase-actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; margin-top: 24px; }
+.detail-purchase-actions .item-page-add {
+  display: flex;
+  margin: 0;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  white-space: normal;
+}
+.detail-purchase-actions .detail-add { background: transparent; color: var(--accent); }
+.detail-purchase-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
+.detail-cart-message { min-height: 1.6em; margin: 12px 0 0; color: var(--accent); font-size: 13px; line-height: 1.6; }
+.item-page .item-page-description { white-space: pre-line; overflow-wrap: anywhere; line-height: 1.75; }
+.quantity-control button:disabled { opacity: 0.4; cursor: not-allowed; }
+@media (max-width: 600px) {
+  .detail-header-actions { gap: 10px; }
+  .item-page .item-page-header .wordmark { width: 112px; }
+  .item-page .item-page-header .wordmark img { width: 100% !important; }
+  .item-page .item-page-main { padding: 16px; }
+  .detail-purchase-actions { grid-template-columns: minmax(0, 1fr); }
+  .detail-pricing strong { font-size: 27px; }
+}
+
 /* Compact ecommerce cards with a native link covering the card surface. */
 .compact-product-card {
   position: relative;
