@@ -115,15 +115,17 @@
   }
 
   function addToCart(productId) {
-    const product = readState().products.find((entry) => entry.id === productId && entry.active !== false);
+    const product = readState().products.find((entry) => String(entry.id) === String(productId) && entry.active !== false);
     if (!product || Number(product.stock) < 1) return false;
 
     try {
       const cartItems = JSON.parse(localStorage.getItem("movio-cart") || "[]");
       if (!Array.isArray(cartItems)) return false;
-      const cartItem = cartItems.find((item) => item.id === productId);
-      if (cartItem) cartItem.quantity = Math.min(cartItem.quantity + 1, product.stock, 99);
-      else cartItems.push({ id: productId, quantity: 1 });
+      const cartItem = cartItems.find((item) => String(item.id) === String(productId));
+      if (cartItem) {
+        cartItem.id = String(product.id);
+        cartItem.quantity = Math.min(Number(cartItem.quantity) + 1, Math.floor(Number(product.stock)));
+      } else cartItems.push({ id: String(product.id), quantity: 1 });
       localStorage.setItem("movio-cart", JSON.stringify(cartItems));
       return true;
     } catch (error) {
@@ -146,11 +148,11 @@
     if (!input.items || !input.items.length) throw new Error("კალათა ცარიელია.");
 
     const items = input.items.map((item) => {
-      const product = state.products.find((entry) => entry.id === item.id && entry.active !== false);
+      const product = state.products.find((entry) => String(entry.id) === String(item.id) && entry.active !== false);
       if (!product) throw new Error("პროდუქტი აღარ არის ხელმისაწვდომი.");
       if (product.stock < item.quantity) throw new Error(`${product.name}: მარაგი საკმარისი არ არის.`);
       return {
-        id: product.id,
+        id: String(product.id),
         name: product.name,
         quantity: item.quantity,
         price: Number(product.price),
@@ -173,7 +175,7 @@
     };
 
     state.products = state.products.map((product) => {
-      const ordered = items.find((item) => item.id === product.id);
+      const ordered = items.find((item) => String(item.id) === String(product.id));
       return ordered ? { ...product, stock: product.stock - ordered.quantity } : product;
     });
     state.orders.unshift(order);

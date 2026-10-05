@@ -15,11 +15,12 @@ const CATEGORY_LABELS = {
 };
 
 function getProduct(productId) {
-  const savedProduct = window.MovioStore.getProducts().find((product) => product.id === productId);
+  const savedProduct = window.MovioStore.getProducts().find((product) => String(product.id) === String(productId));
   if (!savedProduct || savedProduct.active === false) return null;
 
   return {
     ...savedProduct,
+    id: String(savedProduct.id),
     categoryKey: savedProduct.category,
     category: CATEGORY_LABELS[savedProduct.category] || savedProduct.category,
     imageAlt: savedProduct.name,
@@ -63,10 +64,16 @@ class CartStore {
 
       if (!Array.isArray(savedItems)) return [];
 
-      const products = new Map(window.MovioStore.getProducts().map((product) => [product.id, product]));
+      const products = new Map(window.MovioStore.getProducts().map((product) => [String(product.id), product]));
       return savedItems
-        .filter((item) => products.has(item.id) && products.get(item.id).active !== false && products.get(item.id).stock > 0 && window.MovioStore.getStockLabel(products.get(item.id)) === "მარაგშია" && Number.isInteger(item.quantity) && item.quantity > 0)
-        .map((item) => ({ id: item.id, quantity: Math.min(item.quantity, products.get(item.id).stock, 99) }));
+        .filter((item) => {
+          const product = products.get(String(item?.id));
+          return product && product.active !== false && Number(product.stock) >= 1 && window.MovioStore.getStockLabel(product) === "მარაგშია" && Number.isInteger(Number(item.quantity)) && Number(item.quantity) > 0;
+        })
+        .map((item) => {
+          const product = products.get(String(item.id));
+          return { id: String(product.id), quantity: Math.min(Number(item.quantity), Math.floor(Number(product.stock))) };
+        });
     } catch (error) {
       return [];
     }
@@ -84,19 +91,19 @@ class CartStore {
     const product = getProduct(productId);
     if (!product || product.stock < 1 || window.MovioStore.getStockLabel(product) !== "მარაგშია") return;
 
-    const existingItem = this.items.find((item) => item.id === productId);
+    const existingItem = this.items.find((item) => String(item.id) === String(productId));
 
     if (existingItem) {
-      existingItem.quantity = Math.min(existingItem.quantity + 1, product.stock, 99);
+      existingItem.quantity = Math.min(Number(existingItem.quantity) + 1, Math.floor(Number(product.stock)));
     } else {
-      this.items.push({ id: productId, quantity: 1 });
+      this.items.push({ id: product.id, quantity: 1 });
     }
 
     this.save();
   }
 
   setQuantity(productId, quantity) {
-    const item = this.items.find((cartItem) => cartItem.id === productId);
+    const item = this.items.find((cartItem) => String(cartItem.id) === String(productId));
     if (!item) return;
     const product = getProduct(productId);
     if (!product || product.stock < 1 || window.MovioStore.getStockLabel(product) !== "მარაგშია") {
@@ -104,12 +111,15 @@ class CartStore {
       return;
     }
 
-    item.quantity = Math.max(1, Math.min(quantity, Number(product.stock), 99));
+    const nextQuantity = Number(quantity);
+    if (!Number.isInteger(nextQuantity)) return;
+    item.id = String(product.id);
+    item.quantity = Math.max(1, Math.min(nextQuantity, Math.floor(Number(product.stock))));
     this.save();
   }
 
   remove(productId) {
-    this.items = this.items.filter((item) => item.id !== productId);
+    this.items = this.items.filter((item) => String(item.id) !== String(productId));
     this.save();
   }
 
@@ -136,6 +146,7 @@ const cartHeadingCount = document.querySelector(".cart-heading-count");
 const cartSubtotal = document.querySelector("[data-cart-subtotal]");
 const cartTotal = document.querySelector("[data-cart-total]");
 const cartStatus = document.querySelector(".cart-status");
+let cartCheckoutOpen = false;
 
 function replaceContent(element, nodes) {
   while (element.firstChild) element.removeChild(element.firstChild);
@@ -251,7 +262,7 @@ function createCartItem(cartItem) {
       control.setAttribute("aria-label", ariaLabel);
       control.textContent = label;
       control.disabled = action === "increase"
-        ? cartItem.quantity >= Math.min(Number(product.stock), 99)
+        ? cartItem.quantity >= Number(product.stock)
         : cartItem.quantity <= 1;
     } else {
       control.setAttribute("aria-live", "polite");
@@ -305,22 +316,36 @@ function renderCart() {
   const mobileCheckout = document.querySelector("#mobileCartCheckout");
   if (mobileCheckout) mobileCheckout.disabled = !hasItems;
   const checkoutForm = document.querySelector("#checkoutForm");
-  if (checkoutForm) checkoutForm.hidden = !hasItems;
+  if (!hasItems) {
+    cartCheckoutOpen = false;
+    document.body.classList.remove("mobile-checkout-open");
+  }
+  if (checkoutForm) checkoutForm.hidden = !hasItems || (document.body.classList.contains("cart-page") && !cartCheckoutOpen);
+  const desktopCheckout = document.querySelector("#desktopCartCheckout");
+  if (desktopCheckout) {
+    desktopCheckout.disabled = !hasItems;
+    desktopCheckout.setAttribute("aria-expanded", String(cartCheckoutOpen));
+  }
   const demoCheckoutButton = document.querySelector("#demoCheckoutButton");
   if (demoCheckoutButton) {
     const localDemoHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
     const paymentUnavailable = document.documentElement.dataset.paymentAvailable !== "true";
-    demoCheckoutButton.hidden = !localDemoHost || !hasItems || !paymentUnavailable || typeof window.MovioStore?.createOrder !== "function";
+    demoCheckoutButton.hidden = !localDemoHost || !hasItems || !paymentUnavailable || typeof window.MovioStore?.createOrder !== "function" || (document.body.classList.contains("cart-page") && !cartCheckoutOpen);
   }
 }
 
-document.querySelector("#mobileCartCheckout")?.addEventListener("click", () => {
+function openCartCheckout() {
   const form = document.querySelector("#checkoutForm");
-  if (!form || form.hidden) return;
+  if (!form || !cartStore.items.length) return;
+  cartCheckoutOpen = true;
   document.body.classList.add("mobile-checkout-open");
+  renderCart();
   form.scrollIntoView({ behavior: "smooth", block: "start" });
   form.querySelector("input")?.focus({ preventScroll: true });
-});
+}
+
+document.querySelector("#mobileCartCheckout")?.addEventListener("click", openCartCheckout);
+document.querySelector("#desktopCartCheckout")?.addEventListener("click", openCartCheckout);
 
 function goToCart(productName) {
   cartStatus.textContent = `${productName} დაემატა კალათაში.`;
@@ -494,7 +519,7 @@ function renderSearchResults(query) {
 
     link.className = "search-result-link";
     const card = [...document.querySelectorAll(".category-detail")]
-      .find((article) => article.querySelector(".add-to-cart")?.dataset.productId === product.id);
+      .find((article) => article.querySelector(".add-to-cart")?.dataset.productId === String(product.id));
     const target = card?.id || "catalog";
     link.href = `${document.body.classList.contains("cart-page") ? "index.html" : ""}#${target}`;
     type.textContent = CATEGORY_LABELS[product.category] || product.category;
@@ -629,28 +654,41 @@ if (demoCheckoutButton) {
   demoCheckoutButton.addEventListener("click", () => placeCartOrder("დემო", true));
 }
 
-cartItems.addEventListener("click", (event) => {
-  const actionButton = event.target.closest("[data-cart-action]");
-  const item = event.target.closest(".cart-item");
-  if (!actionButton || !item) return;
+function handleCartControlClick(event) {
+  const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+  const button = target?.closest("button[data-cart-action]");
+  if (!button || button.disabled || !cartSection.contains(button)) return;
+  const row = button.closest(".cart-item[data-product-id]");
+  if (!row || !cartItems.contains(row)) return;
 
-  const cartItem = cartStore.items.find((currentItem) => String(currentItem.id) === item.dataset.productId);
+  const productId = String(row.dataset.productId);
+  const cartItem = cartStore.items.find((entry) => String(entry.id) === productId);
   if (!cartItem) return;
-  const productId = cartItem.id;
 
-  if (actionButton.dataset.cartAction === "increase") {
-    cartStore.setQuantity(productId, cartItem.quantity + 1);
-    cartStatus.textContent = "რაოდენობა განახლდა.";
-  } else if (actionButton.dataset.cartAction === "decrease") {
-    cartStore.setQuantity(productId, Math.max(1, cartItem.quantity - 1));
-    cartStatus.textContent = "რაოდენობა განახლდა.";
-  } else if (actionButton.dataset.cartAction === "remove") {
+  const action = button.dataset.cartAction;
+  if (!["increase", "decrease", "remove"].includes(action)) return;
+  event.preventDefault();
+
+  if (action === "remove") {
     cartStore.remove(productId);
     cartStatus.textContent = "პროდუქტი წაიშალა კალათიდან.";
+  } else {
+    const product = getProduct(productId);
+    if (!product) return;
+    const stock = Math.floor(Number(product.stock));
+    if (!Number.isFinite(stock) || stock < 1) return;
+    const currentQuantity = Number(cartItem.quantity);
+    const nextQuantity = Math.max(1, Math.min(stock, currentQuantity + (action === "increase" ? 1 : -1)));
+    cartStore.setQuantity(productId, nextQuantity);
+    cartStatus.textContent = "რაოდენობა განახლდა.";
   }
 
+  // Re-render quantities, per-item subtotals and both totals from the saved cart.
   renderCart();
-});
+}
+
+// One listener on the stable container also handles newly rendered rows.
+cartSection?.addEventListener("click", handleCartControlClick);
 
 window.addEventListener("storage", (event) => {
   if (event.key === CartStore.storageKey) {
