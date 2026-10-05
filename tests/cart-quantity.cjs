@@ -6,7 +6,8 @@ const path = require('node:path');
 const os = require('node:os');
 const { spawn } = require('node:child_process');
 const assert = require('node:assert/strict');
-const live = process.argv.includes('--live');
+const homepage = process.argv.includes('--homepage');
+const live = process.argv.includes('--live') || homepage;
 const root = path.resolve(__dirname, '..');
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'movio-quantity-'));
 const server = http.createServer((req, res) => {
@@ -52,13 +53,13 @@ async function main() {
     return result.result.value;
   };
   await send('Runtime.enable'); await send('Page.enable');
-  await send('Page.navigate', { url: live ? 'http://127.0.0.1:5500/cart.html' : `http://127.0.0.1:${server.address().port}/cart.html` });
+  await send('Page.navigate', { url: homepage ? 'http://127.0.0.1:5500/index.html' : live ? 'http://127.0.0.1:5500/cart.html' : `http://127.0.0.1:${server.address().port}/cart.html` });
   async function ready() {
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < (live ? 500 : 100); i++) {
       if (await evaluate(`typeof cartStore !== 'undefined' && document.readyState !== 'loading'`)) return;
       await new Promise(resolve => setTimeout(resolve, 30));
     }
-    throw new Error('Cart did not initialize');
+    throw new Error(`Page did not initialize: ${JSON.stringify({errors, page: await evaluate("({url:location.href,state:document.readyState,cart:typeof cartStore,scripts:[...document.scripts].map(s=>s.src)})")})}`);
   }
   await ready();
   async function reload() {
@@ -87,6 +88,43 @@ async function main() {
     assert.equal(actual.total, await evaluate(`formatPrice(${quantity} * 25.5 + 10)`));
     assert.equal(actual.mobileTotal, actual.total);
     assert.equal(actual.stored, quantity);
+  }
+  if (homepage) {
+    for (const width of [1280, 390]) {
+      const mobile = width <= 600;
+      await send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile });
+      await send('Page.navigate', { url: 'http://127.0.0.1:5500/index.html' });
+      for (let i = 0; i < 200; i++) {
+        if (await evaluate(`typeof cartStore !== 'undefined' && !!document.querySelector('.product-cart') && document.readyState === 'complete'`)) break;
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      assert(await evaluate(`!document.querySelector('#cart,#checkoutForm,#customerName,.hero,.promise,.faq') && document.querySelectorAll('footer').length===1 && !!document.querySelector('#categories')`));
+      assert.equal(await evaluate(`document.querySelector('.header-cart-link').getAttribute('href')`), 'cart.html');
+      await evaluate(`document.querySelector('#site-search').focus()`);
+      const query = await evaluate(`window.MovioStore.getProducts()[0].name.slice(0,4)`);
+      await send('Input.insertText', { text: query });
+      assert(await evaluate(`!document.querySelector('.search-results').hidden && !!document.querySelector('.search-results a')`));
+      await evaluate(`document.querySelector('#site-search').value='';document.querySelector('#site-search').dispatchEvent(new Event('input',{bubbles:true}));cartStore.clear();renderCart()`);
+      await click('.transport-category-card[data-category-filter="electric-scooters"]', mobile);
+      assert(await evaluate(`!!document.querySelector('.product-cart') && !document.querySelector('.compact-product-card').hidden`));
+      await click('.product-cart', mobile);
+      for (let i = 0; i < 100; i++) {
+        if (await evaluate(`location.pathname==='/cart.html' && document.readyState==='complete' && !!document.querySelector('.cart-item')`)) break;
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+      assert(await evaluate(`location.pathname==='/cart.html' && !!document.querySelector('.cart-item') && !!document.querySelector('#checkoutForm')`));
+      await send('Page.navigate', { url: 'http://127.0.0.1:5500/index.html' });
+      await ready();
+      await click('.header-cart-link', mobile);
+      for (let i = 0; i < 100; i++) {
+        if (await evaluate(`location.pathname==='/cart.html' && document.readyState==='complete'`)) break;
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+      assert.equal(await evaluate(`location.pathname`), '/cart.html');
+      console.log(`PASS REAL HOMEPAGE ${width}px: clean sections, one footer, search, categories, unchanged product add action, cart icon, checkout on cart.html`);
+    }
+    assert.deepEqual(errors, []);
+    return;
   }
   if (live) {
     // Real port-5500 page and unmodified scripts. Only GET stock data is varied

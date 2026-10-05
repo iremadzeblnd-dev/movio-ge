@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ka" data-payment-available="false">
   <head>
     <meta charset="UTF-8" />
@@ -20,7 +20,7 @@
 <script src="supabaseClient.js" defer></script>
 <script src="store.js?v=20261003-2" defer></script>
 <script src="supabase-sync.js?v=20261003-2" defer></script>
-    <script src="script.js?v=cart-route-20261005-3" defer></script>
+    <script src="script.js?v=homepage-clean-20261005-11" defer></script>
     <script src="customer-auth.js" defer></script>
     <script src="mobile-storefront.js" defer></script>
   </head>
@@ -112,9 +112,8 @@
 
         </section>
 
-        
-<section class="category-destinations" id="catalog" tabindex="-1" aria-labelledby="catalog-title">
-          <div class="transport-category-row">
+        <section class="category-destinations" id="catalog" tabindex="-1" aria-labelledby="catalog-title">
+          <div class="transport-category-row" id="categories" tabindex="-1">
 
             <a class="transport-category-card" href="#catalog" data-category-filter="electric-scooters">
               <div class="transport-category-icon transport-scooter-icon"><img src="movio-scooter-icon.png" alt="სკუტერები"></div>
@@ -152,123 +151,8 @@
           <p class="catalog-empty" id="catalogEmpty" hidden>ამ კატეგორიაში პროდუქტი ჯერ არ არის.</p>
         </section>
 
-        <section class="cart" id="cart" tabindex="-1" aria-labelledby="cart-title">
-          <header class="cart-heading">
-            <div>
-              <p class="section-index">03 / შენი კალათა</p>
-              <h2 id="cart-title">არჩეული ნივთები</h2>
-            </div>
-            <p class="cart-heading-count" aria-live="polite">კალათა ცარიელია</p>
-          </header>
-
-          <div class="cart-layout">
-            <div class="cart-content">
-              <div class="cart-empty" data-cart-empty>
-                <span aria-hidden="true">M↗</span>
-                <h3>კალათა ჯერ ცარიელია</h3>
-                <p>აირჩიე სასურველი პროდუქტი კატალოგიდან და ის აქ გამოჩნდება.</p>
-                <a href="#catalog">კატალოგის ნახვა →</a>
-              </div>
-              <ul class="cart-items" data-cart-items aria-label="კალათაში დამატებული პროდუქტები"></ul>
-            </div>
-
-            <aside class="cart-summary" aria-label="კალათის შეჯამება">
-              <p class="summary-label">კალათის შეჯამება</p>
-              <div class="summary-row">
-                <span>პროდუქტების ფასი</span>
-                <span data-cart-subtotal>ინფორმაცია ჯერ არ არის მოწოდებული</span>
-              </div>
-              <div class="summary-total">
-                <span>ჯამი</span>
-                <strong data-cart-total>ინფორმაცია ჯერ არ არის მოწოდებული</strong>
-              </div>
-              <form class="checkout-form" id="checkoutForm">
-                <label for="customerName">სახელი და გვარი</label>
-                <input id="customerName" name="name" autocomplete="name" required />
-                <label for="customerPhone">ტელეფონი</label>
-                <input id="customerPhone" name="phone" type="tel" autocomplete="tel" required />
-                <label for="customerCity">ქალაქი</label>
-                <input id="customerCity" name="city" autocomplete="address-level2" required />
-                <label for="customerAddress">მისამართი</label>
-                <textarea id="customerAddress" name="address" autocomplete="street-address" required></textarea>
-                <label for="paymentMethod">გადახდის მეთოდი</label>
-                <select id="paymentMethod" name="paymentMethod" required>
-                  <option value="მიღებისას ნაღდი ანგარიშსწორება">მიღებისას ნაღდი ანგარიშსწორება</option>
-                  <option class="local-demo-only" value="ბანკის გადარიცხვა (დემო)" hidden>ბანკის გადარიცხვა (დემო)</option>
-                </select>
-                <button class="checkout-submit" type="submit">შეკვეთის დადასტურება</button>
-              </form>
-              <button class="checkout-submit demo-checkout-submit" id="demoCheckoutButton" type="button" hidden>დემო შეკვეთის შექმნა</button>
-              <p class="checkout-message" id="checkoutMessage" role="status" aria-live="polite"></p>
-              <p class="summary-note">სადემონსტრაციო ფასები. გადახდა ამ ვერსიაში არ მუშავდება.</p>
-            </aside>
-          </div>
-          <p class="cart-status" role="status" aria-live="polite"></p>
-        </section>
-
-        <section class="promise" id="about" tabindex="-1" aria-labelledby="promise-title">
-          <p class="section-index">04 / MOVIO</p>
-          <div class="promise-layout">
-            <h2 id="promise-title">მკაფიო არჩევანი.<br /><span>მარტივი გზა.</span></h2>
-            <div class="promise-copy">
-              <p>
-                MOVIO არის ელექტროტრანსპორტისა და მანქანის აქსესუარების ციფრული კატალოგის კონცეფცია. გვერდის მიზანია კატეგორიების მკაფიოდ, მარტივად და ქართულად წარმოდგენა.
-              </p>
-              <p>
-                კატალოგში განთავსდება მხოლოდ დადასტურებული პროდუქტის ინფორმაცია და შესაბამისი ფოტოები, როდესაც საჭირო მასალა მოწოდებული იქნება.
-              </p>
-              <div class="promise-points">
-                <span><i>01</i> მკაფიო კატეგორიები</span>
-                <span><i>02</i> მარტივი ნავიგაცია</span>
-                <span><i>03</i> მხოლოდ დადასტურებული ინფორმაცია</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section class="faq" id="faq" tabindex="-1" aria-labelledby="faq-title">
-          <div class="faq-heading">
-            <div>
-              <p class="section-index">05 / ხშირად დასმული კითხვები</p>
-              <h2 id="faq-title">მოკლე პასუხები.<br /><span>მარტივი არჩევანი.</span></h2>
-            </div>
-            <p>ძირითადი ინფორმაცია MOVIO-ს საინფორმაციო კატალოგის შესახებ.</p>
-          </div>
-
-          <div class="faq-list">
-            <details id="faq-catalog-info">
-              <summary>რა ინფორმაცია განთავსდება კატალოგში?</summary>
-              <p>მხოლოდ დადასტურებული პროდუქტის აღწერები, ტექნიკური ინფორმაცია და შესაბამისი ფოტოები, როდესაც მასალა მოწოდებული იქნება.</p>
-            </details>
-            <details id="faq-purchase">
-              <summary>შესაძლებელია ამ გვერდიდან პროდუქტის შეძენა?</summary>
-              <p>პროდუქტის კალათაში დამატება შესაძლებელია, თუმცა შეძენა და გადახდა ამ პროტოტიპში ხელმისაწვდომი არ არის.</p>
-            </details>
-            <details id="faq-photos">
-              <summary>რატომ არის გამოყენებული ფოტოს ადგილები?</summary>
-              <p>ზოგიერთი კატეგორიის რეალური პროდუქტის ფოტო ჯერ არ არის მოწოდებული. მონიშნული ადგილები აჩვენებს, სად დაემატება შესაბამისი მასალა.</p>
-            </details>
-          </div>
-        </section>
       </main>
 
-      <footer id="footer" tabindex="-1">
-        <div class="footer-top">
-          <img class="footer-mark" src="movio-logo-final.svg" alt="MOVIO" width="340" height="112" loading="lazy" decoding="async" />
-          <p>MOVIO — ელექტროტრანსპორტი და მანქანის აქსესუარები.</p>
-        </div>
-        <nav class="footer-nav" aria-label="ქვედა ნავიგაცია">
-          <a href="#top">მთავარი</a>
-          <a href="#categories">კატეგორიები</a>
-          <a href="#catalog">კატალოგი</a>
-          <a href="cart.html">კალათა</a>
-          <a href="#about">MOVIO-ს შესახებ</a>
-          <a href="#faq">ხშირი კითხვები</a>
-        </nav>
-        <div class="footer-bottom">
-          <span>© 2026 MOVIO</span>
-        </div>
-      </footer>
     </div>
   <footer class="movio-footer">
   <div class="movio-footer-inner">

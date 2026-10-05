@@ -298,12 +298,14 @@ function renderCart() {
   const hasItems = cartStore.items.length > 0;
   const itemCount = cartStore.itemCount;
 
-  replaceContent(cartItems, cartStore.items.map(createCartItem));
-  cartItems.hidden = !hasItems;
-  cartEmpty.hidden = hasItems;
   cartCount.textContent = itemCount;
   cartCount.classList.toggle("has-items", hasItems);
   cartLink.setAttribute("aria-label", `კალათა, ${itemCount} პროდუქტი`);
+  if (!cartSection || !cartItems) return;
+
+  replaceContent(cartItems, cartStore.items.map(createCartItem));
+  cartItems.hidden = !hasItems;
+  cartEmpty.hidden = hasItems;
   cartHeadingCount.textContent = hasItems ? `${itemCount} პროდუქტი კალათაში` : "კალათა ცარიელია";
   const subtotal = cartStore.items.reduce((total, item) => {
     const product = getProduct(item.id);
@@ -348,7 +350,7 @@ document.querySelector("#mobileCartCheckout")?.addEventListener("click", openCar
 document.querySelector("#desktopCartCheckout")?.addEventListener("click", openCartCheckout);
 
 function goToCart(productName) {
-  cartStatus.textContent = `${productName} დაემატა კალათაში.`;
+  if (cartStatus) cartStatus.textContent = `${productName} დაემატა კალათაში.`;
 
   window.location.href = "cart.html";
 }
