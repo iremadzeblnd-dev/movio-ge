@@ -5,6 +5,14 @@ async function initializeProductDetail() {
   document.querySelector('main')?.prepend(loadingMessage);
   await window.MovioStore.catalogReady;
   loadingMessage.remove();
+  if (window.MovioStore.getCatalogStatus() !== 'ready') {
+    const unavailable = document.querySelector('#productNotFound');
+    document.querySelector('#productDetail').hidden = true;
+    unavailable.hidden = false;
+    unavailable.querySelector('p').textContent = 'პროდუქტების ჩატვირთვა ვერ მოხერხდა. განაახლეთ გვერდი და სცადეთ ხელახლა.';
+    unavailable.querySelector('h1').textContent = 'კატალოგი დროებით მიუწვდომელია';
+    return;
+  }
 ﻿const params = new URLSearchParams(window.location.search);
 const productId = params.get("item") || params.get("product");
 
@@ -174,9 +182,9 @@ if (!product) {
       const cart = JSON.parse(localStorage.getItem("movio-cart") || "[]");
       const currentProducts = window.MovioStore.getProducts();
       const count = Array.isArray(cart) ? cart.reduce((sum, item) => {
-        const current = currentProducts.find((entry) => entry.id === item.id && entry.active !== false);
-        if (!current || window.MovioStore.getStockLabel(current) !== "მარაგშია" || !Number.isInteger(item.quantity) || item.quantity < 1) return sum;
-        return sum + Math.min(item.quantity, Number(current.stock), 100);
+        const current = currentProducts.find((entry) => String(entry.id) === String(item?.id) && entry.active !== false);
+        if (!current || window.MovioStore.getStockLabel(current) !== "მარაგშია" || !Number.isInteger(Number(item.quantity)) || Number(item.quantity) < 1) return sum;
+        return sum + Math.min(Number(item.quantity), Number(current.stock), 100);
       }, 0) : 0;
       document.querySelector("#detailCartCount").textContent = count;
       document.querySelector(".detail-header-cart").setAttribute("aria-label", `კალათა, ${count} პროდუქტი`);
@@ -197,7 +205,7 @@ if (!product) {
     let previousQuantity = 0;
     try {
       const cart = JSON.parse(localStorage.getItem("movio-cart") || "[]");
-      if (Array.isArray(cart)) previousQuantity = Number(cart.find((item) => item.id === current.id)?.quantity) || 0;
+      if (Array.isArray(cart)) previousQuantity = Number(cart.find((item) => String(item?.id) === String(current.id))?.quantity) || 0;
     } catch (error) {
       // The store reports malformed cart data as an unsuccessful add below.
     }
@@ -221,7 +229,7 @@ if (!product) {
   document.title = `MOVIO — ${productName}`;
 
   const relatedProducts = products.filter((item) => item.active !== false &&
-    String(item.id) !== String(product.id) && item.category === product.category).slice(0, 4);
+    String(item.id) !== String(product.id) && window.MovioStore.getCategoryKey(item) === window.MovioStore.getCategoryKey(product)).slice(0, 4);
   const relatedGrid = document.querySelector("#detailRelatedGrid");
   relatedProducts.forEach((item) => {
     const link = document.createElement("a");

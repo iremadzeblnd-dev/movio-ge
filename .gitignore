@@ -24,3 +24,7 @@ tmp/
 temp/
 .DS_Store
 Thumbs.db
+
+# Superseded separate-project staging helpers; retain local copies only.
+scripts/prepare-staging.cjs
+tests/staging-preparation.cjs

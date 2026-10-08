@@ -1,6 +1,6 @@
 # MOVIO manual pre-launch steps
 
-No SQL, production orders, secret/environment changes, push or deployment were performed.
+Current launch gates and verification limits: [PRODUCTION-AUDIT-FINAL.md](PRODUCTION-AUDIT-FINAL.md). The notes below are an earlier setup snapshot. The current audit executed SQL only in disposable local databases and made no production changes, commits, pushes or deployments.
 
 ## Migration order
 

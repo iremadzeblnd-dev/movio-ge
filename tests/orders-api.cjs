@@ -76,6 +76,11 @@ async function run(body=input(),headers={},method='POST'){calls=[];const res={se
  rpcOverride={ok:false,status:400,json:async()=>({message:'toString'})};
  r=await run();assert.equal(r.statusCode,503,'Inherited properties are not known transactional errors');
  rpcOverride=undefined;
- delete process.env.SUPABASE_SERVICE_ROLE_KEY;r=await run();assert.equal(r.statusCode,503);assert.equal(calls.length,0);
+ for(const name of ['SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY','SUPABASE_PUBLISHABLE_KEY','TURNSTILE_SECRET_KEY','TURNSTILE_SITE_KEY','ORDER_ALLOWED_ORIGINS']){
+   const value=process.env[name];delete process.env[name];
+   try {
+     for(const method of ['GET','POST']){r=await run(input(),{},method);assert.equal(r.statusCode,503,`${name}: missing configuration fails closed`);assert.equal(calls.length,0);}
+   } finally {process.env[name]=value;}
+ }
  console.log('PASS API: verified guest/auth identity, allowed delivery types, combined authoritative weight, ignored client cost/status/weight/free flags, price/weight/free tampering rejection, free/mixed/overweight/stock failures, server-only credentials');
 })().catch(e=>{console.error(e);process.exitCode=1}).finally(()=>{global.fetch=originalFetch});

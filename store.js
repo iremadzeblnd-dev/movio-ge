@@ -91,6 +91,15 @@
     return clone(catalog);
   }
 
+  function getCategoryKey(product) {
+    const raw = String(product?.categoryKey || product?.category || '').trim().toLocaleLowerCase('ka-GE');
+    if (/quad|atv|კვად/.test(raw)) return 'quad-bikes';
+    if (/scooter|სკუტ/.test(raw)) return 'electric-scooters';
+    if (raw === 'electric-bikes' || /bicycle|ველო/.test(raw)) return 'electric-bikes';
+    if (/accessor|აქსესუარ/.test(raw)) return 'car-accessories';
+    return raw;
+  }
+
   function validateProduct(product) {
     const savedProduct = { ...product };
     savedProduct.id = String(savedProduct.id || '').trim();
@@ -221,6 +230,7 @@
     getCatalogStatus: () => catalogStatus,
     isLegacyDemoProduct,
     getProducts,
+    getCategoryKey,
     saveProduct,
     validateProduct,
     getStockLabel,

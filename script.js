@@ -504,47 +504,7 @@ function syncCatalogProducts() {
 
 
 function getProductCategoryKey(product) {
-  const raw = String(product?.categoryKey || product?.category || "")
-    .trim()
-    .toLocaleLowerCase("ka-GE");
-
-  // კვადრო აუცილებლად შემოწმდეს ველოზე ადრე,
-  // რადგან "quad-bikes"-შიც არის სიტყვა "bike"
-  if (
-    raw === "quad-bikes" ||
-    raw.includes("quad") ||
-    raw.includes("atv") ||
-    raw.includes("კვად")
-  ) {
-    return "quad-bikes";
-  }
-
-  if (
-    raw === "electric-scooters" ||
-    raw.includes("scooter") ||
-    raw.includes("სკუტ")
-  ) {
-    return "electric-scooters";
-  }
-
-  if (
-    raw === "electric-bikes" ||
-    raw.includes("bicycle") ||
-    raw.includes("ველო") ||
-    raw.includes("ველოსიპ")
-  ) {
-    return "electric-bikes";
-  }
-
-  if (
-    raw === "car-accessories" ||
-    raw.includes("accessor") ||
-    raw.includes("აქსესუარ")
-  ) {
-    return "car-accessories";
-  }
-
-  return raw;
+  return window.MovioStore.getCategoryKey(product);
 }
 function applyCatalogFilter(categoryKey) {
   document.querySelectorAll("[data-category-filter]").forEach((card) => {

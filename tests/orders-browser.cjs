@@ -13,7 +13,7 @@ const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'movio-quantity-'));
 let mode='success';const requests=[];const receipts=new Map();
 const server = http.createServer((req, res) => {
   const name = new URL(req.url, 'http://localhost').pathname.slice(1) || 'cart.html';
-  if (name === 'supabase-sync.js') { res.end('// Isolated test fixture only; production never reads cached catalogs.\nwindow.MovioStore.setCatalog(JSON.parse(localStorage.getItem(\'movio-data-v1\')||\'{"products":[]}\').products);window.MovioStore.catalogReady=Promise.resolve();'); return; }
+  if (name === 'supabase-sync.js') { res.end('// Isolated test fixture only; production never reads cached catalogs.\nwindow.MovioStore.setCatalog(JSON.parse(localStorage.getItem(\'movio-data-v1\')||\'{"products":[]}\').products,localStorage.getItem(\'__fixture-catalog-error\')?\'error\':\'ready\');window.MovioStore.catalogReady=Promise.resolve();'); return; }
   if (name === 'supabaseClient.js') { res.end(`
     window.__user=null;window.__history=[];window.__historyFail=false;
     window.movioSupabase={rpc:async(name,args)=>{await new Promise(r=>setTimeout(r,window.__adminDelay||0));if(name==='movio_is_admin')return {data:window.__user?.id==='admin-test'};if(window.__user?.id!=='admin-test')return {error:{message:'ADMIN_REQUIRED'}};if(window.__ordersFail)return {error:{message:'failed'}};if(name==='movio_admin_orders')return {data:args.p_offset?[]:(window.__adminOrders||[])};if(name==='movio_admin_order_status'){window.__statusRequests=(window.__statusRequests||[]).concat([args]);window.__adminOrders.find(o=>o.id===args.p_order_id).status=args.p_status;return {data:{id:args.p_order_id,status:args.p_status}};}throw Error('Unexpected RPC');},auth:{signOut:async()=>{window.__user=null;window.__authCallback('SIGNED_OUT',null);return {}},getSession:async()=>({data:{session:window.__user?{user:window.__user,access_token:'test-auth-token'}:null}}),onAuthStateChange:callback=>{window.__authCallback=callback;}},
@@ -203,7 +203,7 @@ async function main() {
     console.log(`PASS logged-out ${host}: login only, dashboard hidden, no Admin rows rendered`);
   }
   for(const width of [1280,390]){
-    await evaluate(`localStorage.setItem('movio-data-v1',JSON.stringify({products:[{id:'legacy',name:'Legacy',price:100,stock:3,active:true,image:'original.jpg',description:'Preserved'}],orders:[]}))`);
+    await evaluate(`localStorage.setItem('movio-data-v1',JSON.stringify({products:[{id:'legacy',name:'Legacy',category:'ელექტრო სკუტერები',price:100,stock:3,active:true,image:'original.jpg',description:'Preserved'}],orders:[]}))`);
     await send('Emulation.setDeviceMetricsOverride',{width,height:844,deviceScaleFactor:1,mobile:width<600});
     await send('Page.navigate',{url:`http://127.0.0.1:${server.address().port}/admin.html`});await wait(`document.readyState!=='loading' && typeof editProduct==='function' && !!window.__authCallback`);
     await evaluate(`window.__user={id:'customer-test'};window.__authCallback('SIGNED_IN',{user:window.__user})`);
@@ -228,7 +228,11 @@ async function main() {
     await wait(`!ordersBusy && document.querySelector('#ordersList .status-select').disabled`);
     assert.equal(await evaluate(`document.querySelector('#ordersList .status-select').value`),'cancelled');
     console.log('PASS Admin real orders: RPC data, details/quantities/payment/delivery, metrics, persisted status, load failure/retry, terminal cancellation');
+    await evaluate(`document.querySelector('#productCategoryFilter').value='electric-scooters';renderProducts()`);
+    assert.equal(await evaluate(`document.querySelectorAll('#productsList .product-row').length`),1,'Admin filter recognizes Georgian category labels');
     await evaluate(`editProduct(window.MovioStore.getProducts()[0])`);
+    assert.equal(await evaluate(`document.querySelector('#productCategory').value`),'electric-scooters','Admin edit preserves existing category selection');
+    await evaluate(`document.querySelector('#productCategoryFilter').value='';renderProducts()`);
     assert.equal(await evaluate(`document.querySelector('#productWeightKg').value`),'','Legacy product remains editable');
     await evaluate(`document.querySelector('#productWeightKg').value='0'`);assert.equal(await evaluate(`document.querySelector('#productWeightKg').checkValidity()`),false);
     await evaluate(`document.querySelector('#productWeightKg').value='45.125';document.querySelector('#productFreeDelivery').checked=true;document.querySelector('#productForm').requestSubmit()`);
@@ -321,6 +325,18 @@ async function main() {
   assert.equal(requests.length,beforeCorrupt,'Unreadable pending storage cannot generate a new order');
   assert.equal(await evaluate(`sessionStorage.getItem('movio-pending-checkout')`),'{broken');
   console.log('PASS changed form and unreadable pending storage block replacement checkout');
+  await evaluate(`localStorage.setItem('movio-data-v1',JSON.stringify({products:[{id:42,name:'Numeric product',category:'electric-scooters',price:10,stock:5,active:true,freeDelivery:true,weightKg:null}],orders:[]}));localStorage.setItem('movio-cart',JSON.stringify([{id:'42',quantity:'2'}]));`);
+  await send('Page.navigate',{url:`http://127.0.0.1:${server.address().port}/item.html?item=42`});
+  await wait(`!!document.querySelector('#detailDeliveryPrice') && !document.querySelector('#detailBuy').disabled`);
+  assert.equal(await evaluate(`document.querySelector('#detailCartCount').textContent`),'2','Product page counts mixed legacy IDs/quantities');
+  await click('#detailAdd');
+  assert.equal(await evaluate(`document.querySelector('#detailCartCount').textContent`),'3');
+  await evaluate(`localStorage.setItem('__fixture-catalog-error','1')`);
+  await send('Page.navigate',{url:`http://127.0.0.1:${server.address().port}/item.html?item=42`});
+  await wait(`!document.querySelector('#productNotFound').hidden`);
+  assert(await evaluate(`document.querySelector('#productDetail').hidden && document.querySelector('#productNotFound h1').textContent.includes('მიუწვდომელია') && !document.querySelector('#productNotFound p').textContent.includes('404')`),'Failed catalog is not a missing product');
+  await evaluate(`localStorage.removeItem('__fixture-catalog-error')`);
+  console.log('PASS product detail: legacy cart count/add and Georgian catalog failure without stale products');
   assert.deepEqual(errors,[]);
 }
 main().catch(e=>{console.error(e);process.exitCode=1}).finally(()=>{ws?.close();chrome.kill();server.close()});

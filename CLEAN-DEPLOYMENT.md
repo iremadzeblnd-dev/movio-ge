@@ -1,6 +1,6 @@
 ﻿# MOVIO clean deployment inventory
 
-The release files and cleanup are staged for review; no commit, push, deployment, SQL execution or production data change was performed. This inventory supersedes the earlier release snapshots for current Git preparation status.
+Historical inventory for the release subsequently committed as `9d9297a`. The comprehensive local audit and additional uncommitted fixes are documented in [PRODUCTION-AUDIT-FINAL.md](PRODUCTION-AUDIT-FINAL.md). This task did not stage, commit, push or deploy changes. The cleanup inventory below describes the earlier Git preparation.
 
 ## Git cleanup
 

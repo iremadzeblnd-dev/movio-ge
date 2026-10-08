@@ -1,6 +1,12 @@
 # MOVIO production readiness
 
-Latest release attempt: see [DEPLOYMENT-STATUS.md](DEPLOYMENT-STATUS.md). All 16 suites now pass, including disposable PostgreSQL execution of the current migration chain. Production is still blocked: the linked Vercel project lacks both Turnstile variables, its existing `/api/orders` returns 404, and live database/Auth/order release gates remain unverified. Earlier skipped-SQL statements below describe the earlier readiness review.
+Current owner-selected release route: [FINAL-LAUNCH-CHECKLIST.md](FINAL-LAUNCH-CHECKLIST.md), using existing projects only. Prior SQL/product-policy checks are accepted, no pending migration is identified, and no rerun is requested. Actual configuration values, correct-candidate deployment and real runtime verification remain distinct gates. Earlier staging instructions are superseded.
+
+Current remaining launch gates and Georgian final report: [LAUNCH-PREPARATION.md](LAUNCH-PREPARATION.md). The 404 root cause is an old deployed revision without the API; current routing/build pass. Prior metadata/product-policy checks are accepted and do not need to be repeated. Follow the new report's single owner checklist; older audit snapshots below are historical.
+
+Current comprehensive audit: [PRODUCTION-AUDIT-FINAL.md](PRODUCTION-AUDIT-FINAL.md). All 19 suites pass and the local Vercel production build succeeds. Both Turnstile variable names now exist; actual Secret values remain unverified. The live order API still returns 404, and database/staging/owner-policy release gates remain open. The earlier verification statements below are historical; use the current audit for test results and launch steps.
+
+Latest follow-up: owner-supplied live diagnostics resolve the three product RLS reviews (five policies, public catalog reads, Admin-only writes and one protected Admin allowlist row). Order RPC/RLS and intended Admin identity still require verification. This pass ran no SQL/migrations: 18 suites passed, including two static-only SQL checks; one migration-executing suite was deliberately skipped. See the current audit's consolidated owner checklist.
 
 Local code and mocked regressions are verified. Production launch is blocked on the live database, configuration and owner-policy checks below. No SQL, real orders, production data changes, push or deployment occurred.
 
@@ -15,7 +21,7 @@ Inspect applied history. Apply only unapplied scripts through a trusted database
 5. supabase-admin-orders.sql: Admin listing/status and idempotent restoration preserving configured stock status.
 6. supabase-nationwide-free-shipping.sql **last**: optional free-product weight and COALESCE total weight.
 
-Verify specifications/discount columns from their existing migrations before product saves. The original products schema is absent from this repository; deployed columns/types, additional RPCs, policies and grants require owner verification. Reapplying weight-shipping afterward would overwrite nationwide free shipping. Checkout must remain service_role-only. No new migration was needed for this readiness work; PostgreSQL execution remains unverified.
+Verify specifications/discount columns from their existing migrations before product saves. The original products schema is absent from this repository; deployed columns/types, additional RPCs, policies and grants require owner verification. Reapplying weight-shipping afterward would overwrite nationwide free shipping. Checkout must remain service_role-only. No new migration was needed for this readiness work. SQL behavior was tested in disposable local databases; production migration effects remain unverified.
 
 ## Admin/product behavior
 

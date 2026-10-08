@@ -48,6 +48,16 @@ const { PGlite } = require(process.env.MOVIO_PGLITE_PATH || path.join(os.tmpdir(
     assert.equal(own.subtotal,2309); assert.equal(own.deliveryCost,10.5); assert.equal(own.total,2319.5);
     assert.equal((await db.query('select count(*)::int n from order_items')).rows[0].n,3);
     const before = (await db.query("select stock from products where id='free'")).rows[0].stock;
+    const orderCount = (await db.query('select count(*)::int n from orders')).rows[0].n;
+    // Force a failure after the first item/stock write in the current RPC.
+    await db.exec(`create function test_checkout_failure() returns trigger language plpgsql as $$
+      begin if new.product_id='paid' then raise exception 'INJECTED_FAILURE'; end if; return new; end; $$;
+      create trigger test_checkout_failure before insert on order_items for each row execute function test_checkout_failure();`);
+    await assert.rejects(() => call(randomUUID(),buyer,[free,paid]), /INJECTED_FAILURE/);
+    assert.equal((await db.query('select count(*)::int n from orders')).rows[0].n,orderCount);
+    assert.equal((await db.query('select count(*)::int n from order_items')).rows[0].n,3);
+    assert.equal((await db.query("select stock from products where id='free'")).rows[0].stock,before);
+    await db.exec('drop trigger test_checkout_failure on order_items; drop function test_checkout_failure();');
     await assert.rejects(() => call(randomUUID(),buyer,[free,{...paid,quantity:100}]), /STOCK_UNAVAILABLE/);
     assert.equal((await db.query("select stock from products where id='free'")).rows[0].stock,before);
     await assert.rejects(() => call(randomUUID(),null,[{...paid,id:'missing'}]), /PRODUCT_UNAVAILABLE/);
@@ -60,8 +70,13 @@ const { PGlite } = require(process.env.MOVIO_PGLITE_PATH || path.join(os.tmpdir(
     await assert.rejects(() => db.query('select checkout_token from orders'), /permission denied/);
     await assert.rejects(() => db.query('select movio_admin_orders(0)'), /ADMIN_REQUIRED/);
     await assert.rejects(() => db.query("insert into products(id) values ('forbidden')"), /row-level security/);
+    assert.equal((await db.query("update products set stock=100 where id='paid' returning id")).rows.length,0,'Customer cannot overwrite stock');
+    assert.equal((await db.query("delete from products where id='paid' returning id")).rows.length,0,'Customer cannot delete products');
+    await assert.rejects(() => db.query("update orders set total=0"), /permission denied/);
+    await assert.rejects(() => db.query("delete from order_items"), /permission denied/);
     await assert.rejects(() => call(randomUUID(),buyer,[paid]), /permission denied/);
     await db.exec(`select set_config('request.jwt.claim.sub','${admin}',false);`);
+    assert.equal((await db.query('select id from orders')).rows.length,0,'Other customer history remains isolated even for allowlisted Admin direct SELECT');
     assert.equal((await db.query('select movio_is_admin() as ok')).rows[0].ok,true);
     assert.equal((await db.query('select movio_admin_orders(0) as orders')).rows[0].orders.length,2);
     // Soft removal must not prevent stock restoration or reactivate the product.
@@ -74,6 +89,11 @@ const { PGlite } = require(process.env.MOVIO_PGLITE_PATH || path.join(os.tmpdir(
     await db.exec('reset role; set role anon');
     await assert.rejects(() => db.query('select id from orders'), /permission denied/);
     await assert.rejects(() => db.query('select movio_is_admin()'), /permission denied/);
+    await db.exec('reset role; set role service_role');
+    const serviceRetry=await call(token,null,[free],'village_highland');
+    assert.equal(serviceRetry.id,guest.id,'Actual service role can recover the same receipt after deactivation');
+    await db.exec('reset role');
+    assert.equal((await db.query("select stock from products where id='free'")).rows[0].stock,before+1,'Receipt recovery never reserves stock again');
     console.log('PASS current migration chain in isolated PostgreSQL: guest/Auth persistence, server totals, nationwide free/mixed shipping, retries, rollback, deleted products, customer RLS, Admin authorization/cancellation and exactly-once restocking. Production and multi-connection concurrency NOT tested.');
   } finally { await db.close(); }
 })().catch(error => { console.error(error); process.exitCode=1; });

@@ -1,6 +1,12 @@
 # MOVIO release gate — 2026-10-08
 
-Earlier release snapshot: both Turnstile variable names have since been confirmed present in Vercel Production, and retry safety has since received additional fixes and regression coverage. See [CLEAN-DEPLOYMENT.md](CLEAN-DEPLOYMENT.md) for current Git release preparation. The missing-variable statement below records the earlier inspection; actual key values and production runtime behavior remain unverified.
+Release execution is now explicitly authorized using the existing projects. The owner reports all six Vercel Production variables saved. The reviewed candidate will be committed/pushed only after fresh nonmigration tests and the production build pass; the new Git revision and live API will then be verified. Separate-project staging helpers are excluded from Git while retained locally. Deployment results will be reported after verification; the audit snapshots below predate this authorization.
+
+Latest focused launch preparation: [LAUNCH-PREPARATION.md](LAUNCH-PREPARATION.md). Read-only Vercel metadata identifies the live deployment as a redeploy of `0bdabbd`, which lacks both `api/orders.js` and `vercel.json`. The current candidate builds the API correctly as a Node 24 function. 14 relevant suites and the local production build pass. No deployment occurred; current revision deployment, real configuration and isolated staging acceptance remain required. Earlier snapshots below are historical.
+
+Current comprehensive results: [PRODUCTION-AUDIT-FINAL.md](PRODUCTION-AUDIT-FINAL.md). All 19 local suites and local Vercel build pass. Both Turnstile variable names exist, but their actual Secret values and production runtime behavior remain unverified. The live order API returns 404. The notes below describe the earlier release inspection; current fixes remain uncommitted.
+
+Latest read-only follow-up: product-policy reviews are resolved from the owner's live findings. The API still returns 404; all six Production variable names were reconfirmed without values. 18 suites passed (two SQL checks static-only), one migration-executing suite skipped; no SQL/migrations, production changes or deployment performed. Order permissions, real configuration and isolated staging remain open.
 
 **BLOCKED: no commit, push, deployment, production SQL execution, or production order was performed.**
 

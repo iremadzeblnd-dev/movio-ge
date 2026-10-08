@@ -142,7 +142,7 @@ function renderProducts() {
   const category = document.querySelector("#productCategoryFilter").value;
   const filtered = products.filter((product) => {
     const matchesQuery = `${product.name} ${product.description}`.toLocaleLowerCase("ka-GE").includes(query);
-    return product.active !== false && matchesQuery && (!category || product.category === category);
+    return product.active !== false && matchesQuery && (!category || MovioStore.getCategoryKey(product) === category);
   });
   document.querySelector("#productCount").textContent = `(${filtered.length})`;
   const list = document.querySelector("#productsList");
@@ -323,7 +323,7 @@ function editProduct(product) {
   document.querySelector("#productFormHeading").textContent = "პროდუქტის რედაქტირება";
   document.querySelector("#productId").value = product.id;
   document.querySelector("#productName").value = product.name;
-  document.querySelector("#productCategory").value = product.category;
+  document.querySelector("#productCategory").value = MovioStore.getCategoryKey(product);
   document.querySelector("#productPrice").value = product.price;
   document.querySelector("#productWeightKg").value = product.weightKg ?? '';
   document.querySelector("#productFreeDelivery").checked = product.freeDelivery === true;
