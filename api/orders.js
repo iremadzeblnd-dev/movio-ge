@@ -2,6 +2,14 @@
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const message = 'შეკვეთის გაფორმება დროებით მიუწვდომელია. კალათა შენახულია.';
 class InvalidCheckout extends Error {}
+const turnstileCodes = new Set(['missing-input-secret','invalid-input-secret','missing-input-response',
+  'invalid-input-response','bad-request','timeout-or-duplicate','internal-error']);
+function reportTurnstileFailure(reason, result, status) {
+  // Never log the response object, keys, token, request body or customer identity.
+  console.warn(JSON.stringify({ event: 'movio.turnstile.rejected', reason,
+    httpStatus: Number.isInteger(status) ? status : null,
+    errorCodes: Array.isArray(result?.['error-codes']) ? result['error-codes'].map(code => turnstileCodes.has(code) ? code : 'unknown') : [] }));
+}
 async function request(url, options = {}) {
   return fetch(url, { ...options, signal: AbortSignal.timeout(8000) });
 }
@@ -61,13 +69,31 @@ module.exports = async function handler(req, res) {
       userId = user.id; // Never trust a user_id supplied by the browser.
     }
     const token = trim(body.turnstileToken, 1, 2048);
-    const verification = await request('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ secret: env.TURNSTILE_SECRET_KEY, response: token }),
-    });
-    const verified = await verification.json();
-    if (!verification.ok || verified.success !== true || verified.action !== 'checkout'
-      || verified.hostname !== new URL(req.headers.origin).hostname) return reply(403, 'გაიარეთ უსაფრთხოების შემოწმება ხელახლა.');
+    let verification, verified;
+    try {
+      verification = await request('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret: env.TURNSTILE_SECRET_KEY, response: token }),
+      });
+      verified = await verification.json();
+    } catch {
+      reportTurnstileFailure('upstream-unavailable', null, verification?.status);
+      return reply(503, message);
+    }
+    if (!verification.ok || !verified || typeof verified !== 'object' || Array.isArray(verified)) {
+      reportTurnstileFailure('upstream-invalid-response', verified, verification.status);
+      return reply(503, message);
+    }
+    if (verified.success !== true) {
+      reportTurnstileFailure('cloudflare-rejected', verified, verification.status);
+      const serverFailure = Array.isArray(verified['error-codes']) && verified['error-codes'].some(code =>
+        ['missing-input-secret','invalid-input-secret','bad-request','internal-error'].includes(code));
+      return reply(serverFailure ? 503 : 403, serverFailure ? message : 'გაიარეთ უსაფრთხოების შემოწმება ხელახლა.');
+    }
+    if (verified.action !== 'checkout' || verified.hostname !== new URL(req.headers.origin).hostname) {
+      reportTurnstileFailure(verified.action !== 'checkout' ? 'action-mismatch' : 'hostname-mismatch', verified, verification.status);
+      return reply(403, 'გაიარეთ უსაფრთხოების შემოწმება ხელახლა.');
+    }
     const db = await request(`${env.SUPABASE_URL}/rest/v1/rpc/movio_place_order`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', apikey: env.SUPABASE_SERVICE_ROLE_KEY,
         Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },

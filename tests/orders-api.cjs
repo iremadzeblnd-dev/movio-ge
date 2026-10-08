@@ -1,6 +1,7 @@
 ﻿const assert=require('node:assert/strict'),handler=require('../api/orders.js'),shipping=require('../shipping.js');
 Object.assign(process.env,{SUPABASE_URL:'https://db.invalid',SUPABASE_SERVICE_ROLE_KEY:'server-test',SUPABASE_PUBLISHABLE_KEY:'public-test',TURNSTILE_SECRET_KEY:'captcha-test',TURNSTILE_SITE_KEY:'site-test',ORDER_ALLOWED_ORIGINS:'https://movio.example'});
-const originalFetch=global.fetch,products={a:{price:25.5,weightKg:45,freeDelivery:false,stock:10},b:{price:10,weightKg:10,freeDelivery:false,stock:10},free:{price:25.5,weightKg:45,freeDelivery:true,stock:10},heavy:{price:25.5,weightKg:600,freeDelivery:false,stock:10}};
+const originalFetch=global.fetch,originalWarn=console.warn,diagnostics=[],products={a:{price:25.5,weightKg:45,freeDelivery:false,stock:10},b:{price:10,weightKg:10,freeDelivery:false,stock:10},free:{price:25.5,weightKg:45,freeDelivery:true,stock:10},heavy:{price:25.5,weightKg:600,freeDelivery:false,stock:10}};
+console.warn=value=>diagnostics.push(JSON.parse(value));
 let calls=[],authFailure=false,captchaFailure=false,dbGatewayFailure=false,rpcOverride,captchaOverride;
 global.fetch=async(url,options={})=>{
  calls.push({url,options});if(url.endsWith('/auth/v1/user'))return {ok:!authFailure,json:async()=>({id:'11111111-1111-4111-8111-111111111111'})};
@@ -39,6 +40,17 @@ async function run(body=input(),headers={},method='POST'){calls=[];const res={se
  captchaOverride={ok:true,json:async()=>{throw new SyntaxError('Malformed Siteverify');}};
  r=await run();assert.equal(r.statusCode,503);assert(!calls.some(c=>c.url.endsWith('/rpc/movio_place_order')));
  captchaOverride=undefined;
+ for(const code of ['missing-input-secret','invalid-input-secret','bad-request','internal-error']){
+   captchaOverride={ok:true,status:200,json:async()=>({success:false,'error-codes':[code,'sensitive-untrusted-value'],secret:'do-not-log',response:'do-not-log'})};
+   r=await run();assert.equal(r.statusCode,503,'Configuration/provider failures cannot be repaired by retrying the widget');
+   assert(!calls.some(c=>c.url.endsWith('/rpc/movio_place_order')));
+   const logged=diagnostics.at(-1);assert.deepEqual(logged.errorCodes,[code,'unknown']);
+   assert.deepEqual(Object.keys(logged).sort(),['errorCodes','event','httpStatus','reason']);
+   assert(!JSON.stringify(logged).includes('do-not-log'));assert(!JSON.stringify(r.body).includes(code));
+ }
+ captchaOverride=undefined;
+ r=await run({...input(),items:[{...input().items[0],id:'nonexistent-diagnostic-product'}]});
+ assert.equal(r.statusCode,409,'Missing products cannot create an order even after successful Turnstile verification');
  r=await run(input(),{origin:'https://evil.invalid'});assert.equal(r.statusCode,403);assert.equal(calls.length,0);
  r=await run({...input(),deliveryType:''});assert.equal(r.statusCode,400);assert.equal(calls.length,0);
  r=await run({...input(),deliveryType:'cheap'});assert.equal(r.statusCode,400);
@@ -83,4 +95,4 @@ async function run(body=input(),headers={},method='POST'){calls=[];const res={se
    } finally {process.env[name]=value;}
  }
  console.log('PASS API: verified guest/auth identity, allowed delivery types, combined authoritative weight, ignored client cost/status/weight/free flags, price/weight/free tampering rejection, free/mixed/overweight/stock failures, server-only credentials');
-})().catch(e=>{console.error(e);process.exitCode=1}).finally(()=>{global.fetch=originalFetch});
+})().catch(e=>{console.error(e);process.exitCode=1}).finally(()=>{global.fetch=originalFetch;console.warn=originalWarn});

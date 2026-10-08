@@ -274,7 +274,7 @@ async function main() {
   }
   await evaluate(`localStorage.setItem('movio-data-v1',JSON.stringify({products:[{id:'flow',name:'Flow product',category:'electric-scooters',price:35,stock:5,stockStatus:'მარაგშია',freeDelivery:true,weightKg:null,active:true}],orders:[]}));localStorage.setItem('movio-cart','[]')`);
   await send('Page.navigate',{url:`http://127.0.0.1:${server.address().port}/item.html?item=flow`});
-  await wait(`!!document.querySelector('#detailBuy') && !document.querySelector('#detailBuy').disabled`);
+  await wait(`!!document.querySelector('#detailDeliveryPrice') && !document.querySelector('#detailBuy').disabled`);
   await click('#detailBuy');
   await wait(`location.pathname.endsWith('/cart.html') && typeof cartStore!=='undefined' && cartStore.itemCount===1`);
   await click('#mobileCartCheckout');
