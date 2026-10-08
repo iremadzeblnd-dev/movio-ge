@@ -36,7 +36,11 @@ async function run(body=input(),headers={},method='POST'){calls=[];const res={se
  ]) {
    captchaOverride={ok:true,json:async()=>verified};r=await run();assert.equal(r.statusCode,403);
    assert(!calls.some(c=>c.url.endsWith('/rpc/movio_place_order')),'Failed Turnstile cannot reach checkout RPC');
+   if(verified.success===true)assert.equal(diagnostics.at(-1).reason,verified.action!=='checkout'?'action-mismatch':'hostname-mismatch');
  }
+ captchaOverride={ok:false,status:502,json:async()=>({success:true,action:'checkout',hostname:'movio.example'})};
+ r=await run();assert.equal(r.statusCode,503);assert.equal(diagnostics.at(-1).reason,'upstream-invalid-response');
+ assert(!calls.some(c=>c.url.endsWith('/rpc/movio_place_order')),'Provider HTTP failures cannot reach order creation');
  captchaOverride={ok:true,json:async()=>{throw new SyntaxError('Malformed Siteverify');}};
  r=await run();assert.equal(r.statusCode,503);assert(!calls.some(c=>c.url.endsWith('/rpc/movio_place_order')));
  captchaOverride=undefined;
