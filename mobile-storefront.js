@@ -1,4 +1,4 @@
-(function () {
+(async function () {
   if (!window.matchMedia("(max-width: 760px)").matches) return;
 
   document.querySelectorAll('a[href="#categories"]').forEach((link) => {
@@ -14,6 +14,7 @@
     return;
   }
 
+  await window.MovioStore.catalogReady;
   const products = window.MovioStore.getProducts();
   const product = products.find((entry) => entry.id === legacyProductId && entry.active !== false);
   const money = (value) => `${new Intl.NumberFormat("ka-GE", { maximumFractionDigits: 2 }).format(value)} ₾`;
@@ -64,7 +65,7 @@
   input.addEventListener("input", () => {
     const query = input.value.trim().toLocaleLowerCase("ka-GE");
     results.replaceChildren();
-    const matches = query ? products.filter((entry) => entry.active !== false &&
+    const matches = query ? window.MovioStore.getProducts().filter((entry) => entry.active !== false &&
       `${entry.name} ${entry.category} ${entry.description || ""}`.toLocaleLowerCase("ka-GE").includes(query)).slice(0, 8) : [];
     matches.forEach((entry) => {
       const item = document.createElement("li");

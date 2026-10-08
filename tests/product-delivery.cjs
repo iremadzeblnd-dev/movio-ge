@@ -1,0 +1,88 @@
+﻿const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const shipping=require('../shipping.js');
+const expected=[[1,6.5,10.5,6,15.5],[5,7.5,12.5,6,17.5],[10,11,16,10,21],[15,16,21,15,26],[20,19,26,20,31],[30,30,36,30,45],[50,45,65,50,80],[100,65,105,80,120],[150,80,145,110,175],[200,100,185,140,215],[250,120,220,170,250],[300,140,260,200,290],[500,220,340,280,390],[750,300,450,370,500],[1000,380,700,510,750]];
+const item=(weight,quantity=1,free=false)=>({product:{weightKg:weight,freeDelivery:free},quantity});
+assert.deepEqual(shipping.tariffs,expected);
+for(let i=0;i<expected.length;i++)for(let t=0;t<4;t++){
+ assert.equal(shipping.quote([item(expected[i][0])],shipping.types[t]).deliveryCost,expected[i][t+1]);
+ if(i)assert.equal(shipping.quote([item(expected[i-1][0]+0.001)],shipping.types[t]).deliveryCost,expected[i][t+1]);
+}
+assert.equal(shipping.quote([item(1)],'city').deliveryCost,6.5);
+assert.equal(shipping.quote([item(5)],'region').deliveryCost,12.5);
+assert.equal(shipping.quote([item(10)],'branch_pickup').deliveryCost,10);
+assert.equal(shipping.quote([item(15)],'village_highland').deliveryCost,26);
+assert.equal(shipping.quote([item(45)],'city').deliveryCost,45);
+assert.equal(shipping.quote([item(45,2)],'city').deliveryCost,65);
+assert.equal(shipping.quote([item(45),item(45)],'region').deliveryCost,105);
+assert.equal(shipping.quote([item(45,2,true),item(10,1,true)],'city').deliveryCost,0);
+assert.equal(shipping.quote([item(40,1,true),item(8)],'city').deliveryCost,11);
+assert.equal(shipping.quote([item(40,1,true),item(8)],'city').chargeableWeightKg,8);
+assert.equal(shipping.quote([item(40,1,true),item(8,2)],'city').deliveryCost,19);
+assert.equal(shipping.quote([item(1000,2,true),item(8)],'city').deliveryCost,11);
+assert.equal(shipping.quote([item(1000.001)],'city').error,'DELIVERY_CONFIRMATION_REQUIRED');
+assert.equal(shipping.quote([item(1)],'').error,'DELIVERY_TYPE_REQUIRED');
+assert.equal(shipping.quote([item(null)],'city').error,'PRODUCT_WEIGHT_REQUIRED');
+for (const type of shipping.types) {
+  for (const weight of [null,1,1500,999999999.999]) {
+    assert.equal(shipping.quote([item(weight,2,true)],type).deliveryCost,0,'Nationwide free shipping is independent of weight');
+    assert.equal(shipping.quote([item(weight,2,true),item(10)],type).deliveryCost,expected[2][shipping.types.indexOf(type)+1],'Mixed cart charges only paid product weight');
+  }
+}
+assert.equal(shipping.quote([item(0.0001)],'city').error,'PRODUCT_WEIGHT_REQUIRED','Sub-gram weights cannot round down to an invented zero charge');
+assert.equal(shipping.quote([{product:{weightKg:1},quantity:1}],'city').error,'PRODUCT_WEIGHT_REQUIRED','Missing free-delivery metadata cannot imply a fee');
+const read=file=>fs.readFileSync(file,'utf8').replace(/^\uFEFF/,'').replace(/\r\n/g,'\n');
+(async()=>{
+ const values=new Map();let rows=[{id:'p',name:'Product',price:100,weight_kg:45,free_delivery:false,stock:3,active:true}],upserts=[];
+ let writeFailure=false,writeConflict=false;
+ const write=p=>{upserts.push(p);const query={eq:()=>query,select:async()=>writeFailure?{error:{message:'denied'}}:{data:writeConflict?[]:[{id:p.id}]}};return query;};
+ const db={from:()=>({select:()=>({order:async()=>({data:rows})}),update:write,insert:write,delete:()=>({eq:async()=>writeFailure?{error:{message:'denied'}}:{}})}),auth:{getSession:async()=>({data:{session:{user:{id:'admin'}}}})}};
+ const sandbox={setTimeout,clearTimeout,window:{movioSupabase:db,movioAdminAuthorized:true,location:{reload:()=>{}}},document:{getElementById:()=>null},localStorage:{getItem:k=>values.get(k)||null,setItem:(k,v)=>values.set(k,v)},console,alert:()=>{}};
+ vm.createContext(sandbox);vm.runInContext(read('store.js'),sandbox);vm.runInContext(read('supabase-sync.js'),sandbox);await new Promise(r=>setImmediate(r));
+ let product=sandbox.window.MovioStore.getProducts()[0];assert.equal(product.weightKg,45);assert.equal(product.freeDelivery,false);
+ sandbox.window.MovioStore.saveProduct({...product,weightKg:45.125,freeDelivery:true});await new Promise(r=>setImmediate(r));
+ assert.equal(upserts.at(-1).weight_kg,45.125);assert.equal(upserts.at(-1).free_delivery,true);assert(!('delivery_price' in upserts.at(-1)));assert.equal(upserts.at(-1).stock,3);
+ sandbox.window.MovioStore.saveProduct({...product,weightKg:null,freeDelivery:true});await new Promise(r=>setImmediate(r));
+ assert.equal(upserts.at(-1).weight_kg,null);assert.equal(upserts.at(-1).free_delivery,true);
+ sandbox.window.MovioStore.saveProduct({...product,freeDelivery:false});await new Promise(r=>setImmediate(r));
+ assert.equal(upserts.at(-1).free_delivery,false,'Toggle can be disabled and persisted');
+ writeFailure=true;
+ await assert.rejects(()=>sandbox.window.MovioStore.saveProduct({...product,price:200}),/ვერ შეინახა/);
+ assert.equal(sandbox.window.MovioStore.getProducts()[0].price,100,'Failed remote write cannot change local product');
+ await assert.rejects(()=>sandbox.window.MovioStore.deleteProduct(product.id),/წაშლა ვერ/);
+ assert.equal(sandbox.window.MovioStore.getProducts().length,1,'Failed remote deletion preserves local product');
+ writeFailure=false;
+ writeConflict=true;
+ await assert.rejects(()=>sandbox.window.MovioStore.saveProduct({...product,stock:8}),/მარაგი შეიცვალა/);
+ assert.equal(sandbox.window.MovioStore.getProducts()[0].stock,3,'A stale edit cannot commit a new local stock value');
+ writeConflict=false;
+ sandbox.window.MovioStore.saveProduct({...product,discountPercent:15,discountVisible:true,oldPrice:120});await new Promise(r=>setImmediate(r));
+ assert.equal(upserts.at(-1).discount_percent,15);assert.equal(upserts.at(-1).old_price,120);assert.equal(upserts.at(-1).price,100);
+ for(const discountPercent of [-1,101,NaN])assert.throws(()=>sandbox.window.MovioStore.saveProduct({...product,discountPercent}));
+ for(const invalid of [0,-1,NaN,Infinity,null,1.0001])assert.throws(()=>sandbox.window.MovioStore.saveProduct({...product,weightKg:invalid}));
+ sandbox.window.movioAdminAuthorized=false;
+ const writes=upserts.length;
+ assert.throws(()=>sandbox.window.MovioStore.saveProduct({...product,weightKg:45}),/Admin authorization required/);
+ assert.throws(()=>sandbox.window.MovioStore.deleteProduct(product.id),/Admin authorization required/);
+ assert.equal(upserts.length,writes);
+ const sql=read('supabase-nationwide-free-shipping.sql');
+ assert.match(sql,/if not product\.free_delivery and \(product\.weight_kg is null/);
+ assert.match(sql,/expectedWeightKg'\)::numeric is distinct from product\.weight_kg/);
+ assert.match(sql,/if product\.free_delivery then free_count := free_count \+ 1;\s*else\s*paid_count := paid_count \+ 1;\s*chargeable_weight := chargeable_weight \+ product\.weight_kg \* quantity/);
+ const rowsSql=[...sql.matchAll(/\((\d+(?:\.\d+)?(?:,\d+(?:\.\d+)?){4})\)/g)].map(m=>m[1].split(',').map(Number));assert.deepEqual(rowsSql,expected,'Authoritative SQL tariff exactly matches supplied table');
+ const body=sql.slice(sql.indexOf('begin\n  if p_checkout_token'),sql.lastIndexOf('end;\n$$;')).replace(/--[^\n]*/g,'');
+ assert(!body.includes('p_delivery_cost'));
+ assert.match(body,/product\.weight_kg \* quantity/);assert.match(body,/chargeable_weight <= t\.max_weight/);
+ assert(!body.includes('MIXED_FREE_PAID_DELIVERY'));assert.match(body,/chargeable_weight > 1000/);
+ assert.match(body,/id::text = entry->>'id' for update/);assert.match(body,/product\.stock < quantity/);assert.match(body,/stock = stock - quantity/);
+ assert.match(body,/price := round\(product\.price::numeric, 2\)/);assert.match(body,/subtotal \+ delivery_cost/);
+ assert.match(body,/expectedWeightKg/);assert.match(body,/expectedFreeDelivery/);
+ assert.match(sql,/revoke all on function public\.movio_place_order\(uuid, uuid, jsonb, jsonb, numeric, text\) from public, anon, authenticated/);
+ assert(!/create policy|drop policy|disable row level security/i.test(sql));
+ const original=read('supabase-orders.sql');
+ assert.match(original,/create policy orders_read_own[\s\S]*?using \(user_id = \(select auth.uid\(\)\)\)/);
+ assert.match(original,/o.user_id = \(select auth.uid\(\)\)/);
+ assert.match(original,/revoke all on public.orders, public.order_items from public, anon, authenticated/);
+ assert.match(read('supabase-product-delivery.sql'),/weight_kg numeric\(12,3\)/);assert(!read('supabase-product-delivery.sql').includes('delivery_price'));
+ for(const file of fs.readdirSync('.').filter(name=>/\.(js|html)$/.test(name)))assert(!/SUPABASE_SERVICE_ROLE_KEY|sb_secret_/.test(read(file)),file);
+ console.log('PASS shipping: all 60 tariff values, every bracket boundary, specified examples, combined weight, free/mixed/overweight cases, missing type/weight, product sync/Admin validation, static RPC identity/RLS/stock/snapshot security; NO SQL executed');
+})().catch(e=>{console.error(e);process.exitCode=1;});

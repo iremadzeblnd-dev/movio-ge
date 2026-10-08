@@ -18,10 +18,11 @@
     <link rel="stylesheet" href="styles.css" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabaseClient.js" defer></script>
-<script src="store.js?v=20261003-2" defer></script>
-<script src="supabase-sync.js?v=20261003-2" defer></script>
-    <script src="script.js?v=homepage-clean-20261005-11" defer></script>
-    <script src="customer-auth.js" defer></script>
+<script src="store.js?v=readiness-20261008" defer></script>
+<script src="supabase-sync.js?v=readiness-20261008" defer></script>
+    <script src="script.js?v=readiness-20261008" defer></script>
+    <link rel="stylesheet" href="customer-account.css?v=prelaunch-20261008-2" />
+    <script src="customer-auth.js?v=prelaunch-20261008-2" defer></script>
     <script src="mobile-storefront.js" defer></script>
   </head>
   <body>
@@ -54,7 +55,7 @@
           <div class="account-menu" id="accountMenu" role="menu" hidden>
             <button type="button" role="menuitem" data-account-action="profile">ჩემი პროფილი</button>
             <button type="button" role="menuitem" data-account-action="orders">ჩემი შეკვეთები</button>
-            <button type="button" role="menuitem" data-account-action="logout">გასვლა</button>
+            <button type="button" role="menuitem" data-account-action="logout">გამოსვლა</button>
           </div>
         </div>
       </header>
@@ -68,13 +69,14 @@
             <button class="auth-submit" type="submit">შესვლა</button>
           </form>
           <form class="auth-form" id="customerRegisterForm" hidden>
-            <label for="registerName">სახელი</label><input id="registerName" name="name" autocomplete="name" required maxlength="80">
+            <label for="registerName">სახელი</label><input id="registerName" name="firstName" autocomplete="given-name" required maxlength="80">
+            <label for="registerLastName">გვარი</label><input id="registerLastName" name="lastName" autocomplete="family-name" required maxlength="80">
             <label for="registerEmail">ელფოსტა</label><input id="registerEmail" name="email" type="email" autocomplete="email" required>
             <label for="registerPassword">პაროლი</label><input id="registerPassword" name="password" type="password" autocomplete="new-password" minlength="8" required>
             <label for="registerPasswordRepeat">პაროლის გამეორება</label><input id="registerPasswordRepeat" name="passwordRepeat" type="password" autocomplete="new-password" minlength="8" required>
             <button class="auth-submit" type="submit">რეგისტრაცია</button>
           </form>
-          <button class="forgot-password" id="forgotPasswordButton" type="button">დაგავიწყდა პაროლი?</button>
+          <button class="forgot-password" id="forgotPasswordButton" type="button">პაროლი დაგავიწყდა?</button>
           <p class="auth-message" id="authMessage" role="status" aria-live="polite"></p>
         </section>
         <section id="accountDetailsView" hidden>
@@ -146,6 +148,7 @@
             <button id="clearCategoryFilter" type="button">ყველა პროდუქტი <span aria-hidden="true">×</span></button>
           </div>
           <div class="product-grid">
+          <p id="catalogSyncMessage" role="status" aria-live="polite" hidden></p>
           <div class="managed-products" data-managed-products></div>
           </div>
           <p class="catalog-empty" id="catalogEmpty" hidden>ამ კატეგორიაში პროდუქტი ჯერ არ არის.</p>
@@ -165,14 +168,15 @@
         <a href="#catalog" data-category-filter="electric-scooters">ელექტრო სკუტერები</a>
         <a href="#catalog" data-category-filter="electric-bikes">ელექტრო ველოსიპედები</a>
         <a href="#catalog" data-category-filter="quad-bikes">კვადრო ციკლები</a>
-        <a href="#catalog">ყველა პროდუქტი</a>
+        <a href="#catalog" data-category-filter="car-accessories">მანქანის აქსესუარები</a>
+        <a href="#catalog" data-category-filter="">ყველა პროდუქტი</a>
       </nav>
       <div class="footer-column footer-help">
         <h3>დახმარება</h3>
-        <span class="footer-entry">მიწოდება</span>
+        <a href="delivery.html">მიწოდება</a>
         <span class="footer-entry">გადახდა</span>
-        <span class="footer-entry">დაბრუნება / გარანტია</span>
-        <a href="#footer-contact">კონტაქტი</a>
+        <a href="returns.html">დაბრუნება / გარანტია</a>
+        <a href="contact.html">კონტაქტი</a>
       </div>
       <div class="footer-column footer-social">
         <h3>სოციალური ქსელები</h3>
@@ -211,10 +215,10 @@
       </div>
     </div>
     <div class="footer-bottom">
-      <span>© 2026 MOVIO</span>
+      <span>© 2026 MOVIO. ყველა უფლება დაცულია.</span>
       <div class="footer-legal" aria-label="იურიდიული ინფორმაცია">
-        <span>კონფიდენციალურობის პოლიტიკა</span>
-        <span>წესები და პირობები</span>
+        <a href="privacy.html">კონფიდენციალურობის პოლიტიკა</a>
+        <a href="terms.html">წესები და პირობები</a>
       </div>
     </div>
   </footer>

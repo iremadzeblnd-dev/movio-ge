@@ -1,3 +1,41 @@
+let adminOrders = [], ordersGeneration = 0, ordersBusy = false;
+function adminCustomers() {
+  const customers = new Map();
+  for (const order of adminOrders) {
+    const key = JSON.stringify([order.phone, order.name]);
+    const customer = customers.get(key) || {name:order.name,phone:order.phone,city:order.city,totalOrders:0,totalSpent:0,orders:[]};
+    customer.totalOrders++;
+    if (order.status !== 'cancelled') customer.totalSpent += order.total;
+    customer.orders.push(order); customers.set(key,customer);
+  }
+  return [...customers.values()].sort((a,b)=>b.totalSpent-a.totalSpent);
+}
+async function loadAdminOrders() {
+  if (window.movioAdminAuthorized !== true) return;
+  const generation = ++ordersGeneration;
+  ordersBusy = true;
+  const message = document.getElementById('adminOrdersMessage');
+  message.textContent = 'შეკვეთები იტვირთება…';
+  renderAll();
+  try {
+    const orders = [];
+    for (let offset = 0; ; offset += 100) {
+      const result = await window.movioSupabase.rpc('movio_admin_orders', {p_offset:offset});
+      if (generation !== ordersGeneration || window.movioAdminAuthorized !== true) return;
+      if (result.error || !Array.isArray(result.data)) throw Error('შეკვეთების ჩატვირთვა ვერ მოხერხდა. სცადეთ განახლება.');
+      orders.push(...result.data);
+      if (result.data.length < 100) break;
+    }
+    adminOrders = orders; message.textContent = '';
+  } catch (error) {
+    if (generation !== ordersGeneration) return;
+    adminOrders = []; message.textContent = error.message;
+  } finally {
+    if (generation === ordersGeneration) { ordersBusy = false; renderAll(); }
+  }
+}
+document.getElementById('refreshAdminOrders').addEventListener('click', loadAdminOrders);
+
 ﻿const CATEGORY_LABELS = {
   "electric-scooters": "ელექტრო სკუტერები",
   "electric-bikes": "ელექტრო ველოსიპედები",
@@ -6,18 +44,12 @@
 };
 
 const ORDER_STATUSES = [
-  ["new", "ახალი"],
-  ["confirmed", "დადასტურებული"],
+  ["received", "მიღებულია"],
   ["preparing", "მზადდება"],
   ["shipped", "გაგზავნილი"],
   ["completed", "დასრულებული"],
   ["cancelled", "გაუქმებული"],
 ];
-
-const localDemoHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
-document.querySelectorAll(".local-demo-only").forEach((indicator) => {
-  indicator.hidden = !localDemoHost;
-});
 
 const money = (value) => `${new Intl.NumberFormat("ka-GE", { maximumFractionDigits: 2 }).format(value)} ₾`;
 const date = (value) => new Intl.DateTimeFormat("ka-GE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(value));
@@ -53,6 +85,7 @@ function statusSelect(order) {
     option.selected = order.status === value;
     select.appendChild(option);
   });
+  select.disabled = ordersBusy || ["cancelled", "completed"].includes(order.status);
   return select;
 }
 
@@ -64,6 +97,11 @@ function orderSummary(order) {
   content.appendChild(element("div", "", `ქალაქი: ${order.city}`));
   content.appendChild(element("div", "", `მისამართი: ${order.address}`));
   content.appendChild(element("div", "", `გადახდა: ${order.paymentMethod}`));
+  content.appendChild(element("div", "", `ელფოსტა: ${order.email || "—"}`));
+  content.appendChild(element("div", "", `მიწოდება: ${money(order.deliveryCost)} · ${order.deliveryType || "—"}`));
+  content.appendChild(element("div", "", `პროდუქტების ჯამი: ${money(order.subtotal)}`));
+  content.appendChild(element("div", "", `გადახდის სტატუსი: ${order.paymentStatus}`));
+  content.appendChild(element("div", "", order.deliveryInformation || ""));
   const items = element("ul", "detail-items");
   order.items.forEach((item) => items.appendChild(element("li", "", `${item.name} × ${item.quantity} · ${money(item.price * item.quantity)}`)));
   content.appendChild(items);
@@ -72,12 +110,13 @@ function orderSummary(order) {
 }
 
 function renderDashboard() {
-  const orders = MovioStore.getOrders();
+  if (window.movioAdminAuthorized !== true) return;
+  const orders = adminOrders;
   const products = MovioStore.getProducts();
   const completed = orders.filter((order) => order.status === "completed");
   const sales = orders.filter((order) => order.status !== "cancelled").reduce((sum, order) => sum + order.total, 0);
   document.querySelector("#metric-orders").textContent = orders.length;
-  document.querySelector("#metric-new").textContent = orders.filter((order) => order.status === "new").length;
+  document.querySelector("#metric-new").textContent = orders.filter((order) => order.status === "received").length;
   document.querySelector("#metric-completed").textContent = completed.length;
   document.querySelector("#metric-sales").textContent = money(sales);
   document.querySelector("#metric-low-stock").textContent = products.filter((product) => product.stock <= 3).length;
@@ -97,12 +136,13 @@ function renderDashboard() {
 }
 
 function renderProducts() {
+  if (window.movioAdminAuthorized !== true) return;
   const products = MovioStore.getProducts();
   const query = document.querySelector("#productSearch").value.trim().toLocaleLowerCase("ka-GE");
   const category = document.querySelector("#productCategoryFilter").value;
   const filtered = products.filter((product) => {
     const matchesQuery = `${product.name} ${product.description}`.toLocaleLowerCase("ka-GE").includes(query);
-    return matchesQuery && (!category || product.category === category);
+    return product.active !== false && matchesQuery && (!category || product.category === category);
   });
   document.querySelector("#productCount").textContent = `(${filtered.length})`;
   const list = document.querySelector("#productsList");
@@ -153,7 +193,8 @@ function renderProducts() {
 }
 
 function renderOrders() {
-  const orders = MovioStore.getOrders();
+  if (window.movioAdminAuthorized !== true) return;
+  const orders = adminOrders;
   const query = document.querySelector("#orderSearch").value.trim().toLocaleLowerCase("ka-GE");
   const status = document.querySelector("#orderStatusFilter").value;
   const filtered = orders.filter((order) => {
@@ -179,7 +220,8 @@ function renderOrders() {
 }
 
 function renderCustomers() {
-  const customers = MovioStore.getCustomers();
+  if (window.movioAdminAuthorized !== true) return;
+  const customers = adminCustomers();
   const query = document.querySelector("#customerSearch").value.trim().toLocaleLowerCase("ka-GE");
   const filtered = customers.filter((customer) => `${customer.name} ${customer.phone} ${customer.city}`.toLocaleLowerCase("ka-GE").includes(query));
   document.querySelector("#customerCount").textContent = `(${filtered.length})`;
@@ -204,6 +246,7 @@ function renderCustomers() {
 }
 
 function renderAll() {
+  if (window.movioAdminAuthorized !== true) return;
   renderDashboard();
   renderProducts();
   renderOrders();
@@ -211,6 +254,7 @@ function renderAll() {
 }
 
 function showView(viewName) {
+  if (window.movioAdminAuthorized !== true) return;
   document.querySelectorAll("[data-view]").forEach((view) => {
     view.hidden = view.dataset.view !== viewName;
   });
@@ -228,6 +272,9 @@ function resetProductForm() {
   document.querySelector("#productSpecifications").replaceChildren();
   document.querySelector("#productId").value = "";
   document.querySelector("#productStock").value = 1;
+  document.querySelector("#productWeightKg").value = '';
+  document.querySelector("#productFreeDelivery").checked = false;
+  document.querySelector('#productWeightKg').required = true;
   document.querySelector("#productStockStatus").value = "მარაგშია";
   document.querySelector("#productOldPriceVisible").checked = true;
   document.querySelector("#productDiscountVisible").checked = false;
@@ -264,7 +311,13 @@ function addSpecificationRow(specification = {}) {
 
 document.querySelector("#addSpecificationButton").addEventListener("click", () => addSpecificationRow());
 
+function updateProductWeightRequirement() {
+  document.querySelector('#productWeightKg').required = !document.querySelector('#productFreeDelivery').checked;
+}
+document.querySelector('#productFreeDelivery').addEventListener('change', updateProductWeightRequirement);
+
 function editProduct(product) {
+  if (window.movioAdminAuthorized !== true) return;
   const form = document.querySelector("#productForm");
   form.hidden = false;
   document.querySelector("#productFormHeading").textContent = "პროდუქტის რედაქტირება";
@@ -272,6 +325,9 @@ function editProduct(product) {
   document.querySelector("#productName").value = product.name;
   document.querySelector("#productCategory").value = product.category;
   document.querySelector("#productPrice").value = product.price;
+  document.querySelector("#productWeightKg").value = product.weightKg ?? '';
+  document.querySelector("#productFreeDelivery").checked = product.freeDelivery === true;
+  updateProductWeightRequirement();
   document.querySelector("#productOldPrice").value = product.oldPrice ?? "";
   document.querySelector("#productStock").value = product.stock;
   document.querySelector("#productStockStatus").value = MovioStore.getStockLabel(product);
@@ -298,7 +354,8 @@ function readImage(file) {
 }
 
 function showCustomerHistory(phone, name) {
-  const customer = MovioStore.getCustomers().find((entry) => entry.phone === phone && entry.name === name);
+  if (window.movioAdminAuthorized !== true) return;
+  const customer = adminCustomers().find((entry) => entry.phone === phone && entry.name === name);
   if (!customer) return;
   document.querySelector("#customerDialogTitle").textContent = `${customer.name} · შეკვეთების ისტორია`;
   const history = document.querySelector("#customerHistory");
@@ -331,6 +388,10 @@ document.querySelector("#closeCustomerDialog").addEventListener("click", () => d
 document.querySelector("#productForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = event.currentTarget;
+  if (form.hasAttribute('aria-busy')) return;
+  form.setAttribute('aria-busy','true');
+  const submit = form.querySelector('[type="submit"]');
+  if (submit) submit.disabled = true;
   const message = document.querySelector("#productMessage");
   const data = new FormData(form);
   const id = data.get("id") || `product-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
@@ -342,6 +403,8 @@ document.querySelector("#productForm").addEventListener("submit", async (event) 
       name: data.get("name").trim(),
       category: data.get("category"),
       price: Number(data.get("price")),
+      weightKg: data.get("weightKg") === '' ? null : Number(data.get("weightKg")),
+      freeDelivery: data.get("freeDelivery") !== null,
       oldPrice: data.get("oldPrice") ? Number(data.get("oldPrice")) : null,
       stock: Number(data.get("stock")),
       stockStatus: data.get("stockStatus"),
@@ -358,17 +421,22 @@ document.querySelector("#productForm").addEventListener("submit", async (event) 
       image: image || previous?.image || "",
       active: true,
     };
-    MovioStore.saveProduct(product);
+    if (window.movioAdminAuthorized !== true) return;
+    await MovioStore.saveProduct(product);
+    if (window.movioAdminAuthorized !== true) return;
     resetProductForm();
     document.querySelector("#productForm").hidden = false;
     renderAll();
     document.querySelector("#productMessage").textContent = "პროდუქტი შენახულია.";
   } catch (error) {
     message.textContent = error.message || "პროდუქტი ვერ შეინახა. შეამოწმეთ ბრაუზერის საცავის სივრცე.";
+  } finally {
+    form.removeAttribute('aria-busy');
+    if (submit) submit.disabled = false;
   }
 });
 
-document.querySelector("#productsList").addEventListener("click", (event) => {
+document.querySelector("#productsList").addEventListener("click", async (event) => {
   const button = event.target.closest("[data-product-action]");
   if (!button) return;
   const product = MovioStore.getProducts().find((item) => item.id === button.dataset.productId);
@@ -376,23 +444,28 @@ document.querySelector("#productsList").addEventListener("click", (event) => {
   if (button.dataset.productAction === "edit") editProduct(product);
   if (button.dataset.productAction === "delete" && window.confirm(`წავშალოთ პროდუქტი „${product.name}“?`)) {
     try {
-      MovioStore.deleteProduct(product.id);
+      button.disabled = true;
+      await MovioStore.deleteProduct(product.id);
       renderAll();
     } catch (error) {
       window.alert("პროდუქტის წაშლა ვერ მოხერხდა.");
-    }
+    } finally { button.disabled = false; }
   }
 });
 
-document.addEventListener("change", (event) => {
+document.addEventListener("change", async (event) => {
   const select = event.target.closest(".status-select");
-  if (!select) return;
+  if (!select || ordersBusy || window.movioAdminAuthorized !== true) return;
   try {
-    MovioStore.updateOrderStatus(select.dataset.orderId, select.value);
-    renderAll();
+    const orderId = select.dataset.orderId, status = select.value, generation = ordersGeneration;
+    ordersBusy = true; renderAll();
+    const result = await window.movioSupabase.rpc('movio_admin_order_status', {p_order_id: orderId, p_status: status});
+    if (generation !== ordersGeneration || window.movioAdminAuthorized !== true) return;
+    if (result.error) throw Error('სტატუსის განახლება ვერ მოხერხდა. განაახლეთ შეკვეთები და სცადეთ ხელახლა.');
+    await loadAdminOrders();
   } catch (error) {
-    window.alert(error.message || "სტატუსის განახლება ვერ მოხერხდა.");
-  }
+    if (window.movioAdminAuthorized === true) window.alert(error.message || "სტატუსის განახლება ვერ მოხერხდა.");
+  } finally { ordersBusy = false; renderAll(); }
 });
 
 document.querySelector("#customersList").addEventListener("click", (event) => {
@@ -404,5 +477,23 @@ window.addEventListener("storage", (event) => {
   if (event.key === "movio-data-v1") renderAll();
 });
 
-renderAll();
+window.MovioAdminUI = {
+  setAuthorized(authorized) {
+    if (authorized && window.movioAdminAuthorized === true) { renderAll(); loadAdminOrders(); return; }
+    ++ordersGeneration; adminOrders = []; ordersBusy = false;
+    for (const id of ['latestOrders','productsList','ordersList','customersList','customerHistory']) document.getElementById(id)?.replaceChildren();
+    for (const id of ['metric-orders','metric-new','metric-completed','metric-sales','metric-low-stock','productCount','orderCount','customerCount']) {
+      const node = document.getElementById(id); if (node) node.textContent = '';
+    }
+    resetProductForm();
+    document.querySelectorAll('dialog[open]').forEach(dialog => dialog.close());
+  }
+};
+const adminRoot = document.getElementById('adminPanel');
+for (const type of ['click','input','change','submit']) adminRoot.addEventListener(type, event => {
+  if (window.movioAdminAuthorized !== true) { event.preventDefault(); event.stopImmediatePropagation(); }
+}, true);
+window.MovioAdminUI.setAuthorized(false);
 
+
+window.addEventListener("movio:catalog", () => { if (window.movioAdminAuthorized === true) renderAll(); });

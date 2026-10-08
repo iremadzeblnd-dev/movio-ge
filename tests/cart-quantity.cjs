@@ -12,6 +12,7 @@ const root = path.resolve(__dirname, '..');
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'movio-quantity-'));
 const server = http.createServer((req, res) => {
   const name = new URL(req.url, 'http://localhost').pathname.slice(1) || 'cart.html';
+  if (name === 'supabase-sync.js') { res.end('// Isolated test fixture only; production never reads cached catalogs.\nwindow.MovioStore.setCatalog(JSON.parse(localStorage.getItem(\'movio-data-v1\')||\'{"products":[]}\').products);window.MovioStore.catalogReady=Promise.resolve();'); return; }
   if (name === 'supabaseClient.js') { res.end('window.movioSupabase = null;'); return; }
   try {
     let data = fs.readFileSync(path.join(root, name));
@@ -197,11 +198,11 @@ async function main() {
     const mobile = width <= 600;
     await send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile });
     for (const [productId, cartId, quantity] of [[42, '42', '1'], ['42', 42, 1], ['42', '42', 1]]) {
-      await evaluate(`localStorage.setItem('movio-data-v1',JSON.stringify({products:[{id:${JSON.stringify(productId)},name:'ტესტის სკუტერი',category:'electric-scooters',price:25.5,stock:3,active:true},{id:'other',name:'მეორე პროდუქტი',category:'electric-scooters',price:10,stock:2,active:true}],orders:[]}));localStorage.setItem('movio-cart',JSON.stringify([{id:${JSON.stringify(cartId)},quantity:${JSON.stringify(quantity)}},{id:'other',quantity:1}]));`);
+      await evaluate(`localStorage.setItem('movio-data-v1',JSON.stringify({products:[{id:${JSON.stringify(productId)},name:'ტესტის სკუტერი',category:'electric-scooters',price:25.5,weightKg:1,freeDelivery:true,stock:3,active:true},{id:'other',name:'მეორე პროდუქტი',category:'electric-scooters',price:10,weightKg:1,freeDelivery:true,stock:2,active:true}],orders:[]}));localStorage.setItem('movio-cart',JSON.stringify([{id:${JSON.stringify(cartId)},quantity:${JSON.stringify(quantity)}},{id:'other',quantity:1}]));`);
       await reload();
       assert.equal(await evaluate(`document.querySelector(${JSON.stringify(row)}+' output')?.textContent`), '1', 'Mixed product/cart ID types must load');
       // Exercise lookup inside the click handler when the catalog changes ID type after rendering.
-      await evaluate(`(()=>{const data=JSON.parse(localStorage.getItem('movio-data-v1'));data.products[0].id=${JSON.stringify(typeof productId === 'number' ? '42' : 42)};localStorage.setItem('movio-data-v1',JSON.stringify(data));})()`);
+      await evaluate(`(()=>{const data=JSON.parse(localStorage.getItem('movio-data-v1'));data.products[0].id=${JSON.stringify(typeof productId === 'number' ? '42' : 42)};localStorage.setItem('movio-data-v1',JSON.stringify(data));MovioStore.setCatalog(data.products);})()`);
       await click(`${row} [data-cart-action="increase"]`, mobile); await check(2);
       await click(`${row} [data-cart-action="increase"]`, mobile); await check(3);
       await reload(); await check(3);

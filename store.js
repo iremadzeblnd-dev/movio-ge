@@ -1,7 +1,21 @@
-﻿(function () {
+(function () {
   const STORAGE_KEY = "movio-data-v1";
   const LEGACY_DEMO_IDS = new Set(["scooter-s1", "ebike-city", "quad-x4", "auto-kit"]);
   let memoryState;
+  let catalog = [];
+  let catalogStatus = "loading";
+
+  function setCatalog(products, status = "ready") {
+    catalog = status === "ready" ? clone(products) : [];
+    catalogStatus = status;
+    if (status === "ready") {
+      const state = readState();
+      state.products = catalog;
+      writeState(state);
+    }
+    window.dispatchEvent?.(new Event("movio:catalog"));
+  }
+
 
   function clone(value) {
     return JSON.parse(JSON.stringify(value));
@@ -69,17 +83,34 @@
   }
 
   function writeState(state) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     memoryState = clone(state);
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (error) { /* Session catalog remains usable. */ }
   }
 
   function getProducts() {
-    return clone(readState().products);
+    return clone(catalog);
   }
 
-  function saveProduct(product) {
-    const state = readState();
+  function validateProduct(product) {
     const savedProduct = { ...product };
+    savedProduct.id = String(savedProduct.id || '').trim();
+    savedProduct.name = String(savedProduct.name || '').trim();
+    savedProduct.price = Number(savedProduct.price);
+    savedProduct.stock = Number(savedProduct.stock);
+    if (!savedProduct.id || !savedProduct.name || !Number.isFinite(savedProduct.price) || savedProduct.price <= 0
+      || Math.abs(savedProduct.price * 100 - Math.round(savedProduct.price * 100)) > 0.00001
+      || !Number.isInteger(savedProduct.stock) || savedProduct.stock < 0) {
+      throw new Error('შეავსეთ პროდუქტის სახელი, დადებითი ფასი და მარაგის მთელი რაოდენობა.');
+    }
+    savedProduct.freeDelivery = savedProduct.freeDelivery === true;
+    savedProduct.weightKg = savedProduct.freeDelivery && (savedProduct.weightKg == null || savedProduct.weightKg === '')
+      ? null : Number(savedProduct.weightKg);
+    delete savedProduct.deliveryPrice;
+    if (!(savedProduct.freeDelivery && savedProduct.weightKg === null) && (!Number.isFinite(savedProduct.weightKg) || savedProduct.weightKg <= 0
+      || savedProduct.weightKg > 999999999.999
+      || Math.abs(savedProduct.weightKg * 1000 - Math.round(savedProduct.weightKg * 1000)) > 0.00001)) {
+      throw new Error("წონა უნდა იყოს დადებითი რიცხვი, მაქსიმუმ სამი ათწილადი ნიშნით.");
+    }
     savedProduct.specifications = Array.isArray(savedProduct.specifications)
       ? savedProduct.specifications.map((entry) => ({
         label: String(entry?.label || "").trim(),
@@ -101,10 +132,18 @@
     if (!["მარაგშია", "ამოიწურა"].includes(savedProduct.stockStatus)) {
       savedProduct.stockStatus = Number(savedProduct.stock) > 0 ? "მარაგშია" : "ამოიწურა";
     }
-    const index = state.products.findIndex((item) => item.id === savedProduct.id);
+    return savedProduct;
+  }
+
+  function saveProduct(product) {
+    const state = readState();
+    state.products = clone(catalog);
+    const savedProduct = validateProduct(product);
+    const index = state.products.findIndex((item) => String(item.id) === savedProduct.id);
     if (index < 0) state.products.unshift(clone(savedProduct));
     else state.products[index] = clone(savedProduct);
     writeState(state);
+    catalog = clone(state.products);
     return clone(savedProduct);
   }
 
@@ -115,8 +154,8 @@
   }
 
   function addToCart(productId) {
-    const product = readState().products.find((entry) => String(entry.id) === String(productId) && entry.active !== false);
-    if (!product || Number(product.stock) < 1) return false;
+    const product = getProducts().find((entry) => String(entry.id) === String(productId) && entry.active !== false);
+    if (!product || Number(product.stock) < 1 || getStockLabel(product) !== 'მარაგშია') return false;
 
     try {
       const cartItems = JSON.parse(localStorage.getItem("movio-cart") || "[]");
@@ -124,7 +163,7 @@
       const cartItem = cartItems.find((item) => String(item.id) === String(productId));
       if (cartItem) {
         cartItem.id = String(product.id);
-        cartItem.quantity = Math.min(Number(cartItem.quantity) + 1, Math.floor(Number(product.stock)));
+        cartItem.quantity = Math.min(Number(cartItem.quantity) + 1, Math.floor(Number(product.stock)), 100);
       } else cartItems.push({ id: String(product.id), quantity: 1 });
       localStorage.setItem("movio-cart", JSON.stringify(cartItems));
       return true;
@@ -137,50 +176,15 @@
     const state = readState();
     state.products = state.products.filter((product) => product.id !== id);
     writeState(state);
+    catalog = catalog.filter((product) => String(product.id) !== String(id));
   }
 
   function getOrders() {
     return clone(readState().orders).sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   }
 
-  function createOrder(input) {
-    const state = readState();
-    if (!input.items || !input.items.length) throw new Error("კალათა ცარიელია.");
-
-    const items = input.items.map((item) => {
-      const product = state.products.find((entry) => String(entry.id) === String(item.id) && entry.active !== false);
-      if (!product) throw new Error("პროდუქტი აღარ არის ხელმისაწვდომი.");
-      if (product.stock < item.quantity) throw new Error(`${product.name}: მარაგი საკმარისი არ არის.`);
-      return {
-        id: String(product.id),
-        name: product.name,
-        quantity: item.quantity,
-        price: Number(product.price),
-        image: product.image || "",
-      };
-    });
-
-    const order = {
-      id: `order-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      number: `MV-${Date.now().toString().slice(-8)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
-      createdAt: new Date().toISOString(),
-      name: input.name.trim(),
-      customerEmail: String(input.customerEmail || "").trim().toLocaleLowerCase("ka-GE"),
-      city: input.city.trim(),
-      address: input.address.trim(),
-      paymentMethod: input.paymentMethod,
-      items,
-      total: items.reduce((sum, item) => sum + item.price * item.quantity, 0),
-      status: "new",
-    };
-
-    state.products = state.products.map((product) => {
-      const ordered = items.find((item) => String(item.id) === String(product.id));
-      return ordered ? { ...product, stock: product.stock - ordered.quantity } : product;
-    });
-    state.orders.unshift(order);
-    writeState(state);
-    return clone(order);
+  function createOrder() {
+    throw new Error("შეკვეთები ფორმდება მხოლოდ MOVIO-ს ონლაინ სერვისით.");
   }
 
   function updateOrderStatus(id, status) {
@@ -213,9 +217,12 @@
   }
 
   window.MovioStore = {
+    setCatalog,
+    getCatalogStatus: () => catalogStatus,
     isLegacyDemoProduct,
     getProducts,
     saveProduct,
+    validateProduct,
     getStockLabel,
     addToCart,
     deleteProduct,

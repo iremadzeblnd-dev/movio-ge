@@ -1,0 +1,5 @@
+.information-page{max-width:850px;margin:50px auto;padding:0 24px;line-height:1.8}
+.information-page h1{font-size:clamp(1.4rem,4vw,2.4rem);margin-bottom:24px}
+.information-page p{margin:20px 0}
+.information-page a,.information-links a{color:var(--accent)}
+.information-links{display:flex;flex-wrap:wrap;gap:18px;padding:24px}

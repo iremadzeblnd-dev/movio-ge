@@ -1,231 +1,317 @@
-(function () {
-  const USERS_KEY = "movio-customer-users-v1";
-  const SESSION_KEY = "movio-customer-session-v1";
-  const encoder = new TextEncoder();
-
-  function normalizeEmail(email) {
-    return String(email || "").trim().toLocaleLowerCase("en-US");
+// Supabase owns credentials and session persistence. Shopping remains optional-auth.
+(() => {
+  'use strict';
+  const client = window.movioSupabase;
+  let currentUser = null, recovery = false, eventSeen = false, busy = false;
+  let recoveryHint = new URLSearchParams(location.search).get('account') === 'recovery' || new URLSearchParams(location.hash.slice(1)).get('type') === 'recovery';
+  try {
+    localStorage.removeItem('movio-customer-users-v1');
+    localStorage.removeItem('movio-customer-session-v1');
+  } catch { /* Remove only legacy demo auth, never shopping or SDK storage. */ }
+  const email = value => String(value || '').trim().toLowerCase();
+  const prefilled = new Map();
+  const observedFields = new WeakSet();
+  function profile(user) {
+    if (!user?.id) return null;
+    const meta = user.user_metadata || {};
+    const full = String(meta.full_name || meta.name || '').trim();
+    const firstName = String(meta.first_name || full.split(/\s+/)[0] || '').trim();
+    const lastName = String(meta.last_name || full.split(/\s+/).slice(1).join(' ') || '').trim();
+    return { id: user.id, firstName, lastName, name: [firstName, lastName].filter(Boolean).join(' '), email: user.email || '' };
   }
-
-  function readUsers() {
-    try {
-      const users = JSON.parse(localStorage.getItem(USERS_KEY) || "[]");
-      return Array.isArray(users) ? users : [];
-    } catch (error) {
-      return [];
-    }
+  function auth() {
+    if (!client?.auth) throw new Error('ავტორიზაცია დროებით მიუწვდომელია. შეძენა შეგიძლიათ სტუმრის სტატუსით.');
+    return client.auth;
   }
-
-  function getCurrentUser() {
-    try {
-      const session = JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
-      if (!session?.email) return null;
-      const user = readUsers().find((entry) => entry.email === session.email);
-      return user ? { name: user.name, email: user.email } : null;
-    } catch (error) {
-      return null;
-    }
+  function redirect(mode) {
+    const url = new URL('index.html', location.href);
+    url.search = `?account=${mode}`;
+    url.hash = '';
+    return url.href;
   }
-
-  function bytesToHex(bytes) {
-    return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  function check(error, fallback) {
+    if (!error) return;
+    const messages = {
+      invalid_credentials: 'ელფოსტა ან პაროლი არასწორია.',
+      email_not_confirmed: 'შესვლამდე დაადასტურეთ ელფოსტა მიღებული ბმულით.',
+      weak_password: 'პაროლი არ აკმაყოფილებს უსაფრთხოების მოთხოვნებს.',
+      user_already_exists: 'ამ ელფოსტით ანგარიში უკვე არსებობს. სცადეთ შესვლა ან პაროლის აღდგენა.',
+      signup_disabled: 'რეგისტრაცია დროებით მიუწვდომელია.',
+      over_email_send_rate_limit: 'მოთხოვნები ძალიან ხშირია. სცადეთ ცოტა მოგვიანებით.',
+      over_request_rate_limit: 'მოთხოვნები ძალიან ხშირია. სცადეთ ცოტა მოგვიანებით.',
+      same_password: 'აირჩიეთ ძველისგან განსხვავებული ახალი პაროლი.',
+    };
+    throw new Error(messages[error.code] || fallback);
   }
-
-  function hexToBytes(hex) {
-    return new Uint8Array(hex.match(/.{1,2}/g).map((part) => Number.parseInt(part, 16)));
-  }
-
-  async function hashPassword(password, salt) {
-    if (!window.crypto?.subtle) throw new Error("ამ ბრაუზერში უსაფრთხო ავტორიზაცია მიუწვდომელია.");
-    const key = await window.crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveBits"]);
-    const bits = await window.crypto.subtle.deriveBits({ name: "PBKDF2", salt: hexToBytes(salt), iterations: 120000, hash: "SHA-256" }, key, 256);
-    return bytesToHex(new Uint8Array(bits));
-  }
-
-  async function register({ name, email, password }) {
-    const normalizedEmail = normalizeEmail(email);
-    const cleanName = String(name || "").trim();
-    const users = readUsers();
-    if (!cleanName) throw new Error("სახელი აუცილებელია.");
-    if (users.some((user) => user.email === normalizedEmail)) throw new Error("ამ ელფოსტით ანგარიში უკვე არსებობს.");
-    const salt = bytesToHex(window.crypto.getRandomValues(new Uint8Array(16)));
-    const passwordHash = await hashPassword(password, salt);
-    const user = { name: cleanName, email: normalizedEmail, salt, passwordHash, createdAt: new Date().toISOString() };
-    users.push(user);
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    localStorage.setItem(SESSION_KEY, JSON.stringify({ email: normalizedEmail }));
-    return { name: user.name, email: user.email };
-  }
-
-  async function login({ email, password }) {
-    const normalizedEmail = normalizeEmail(email);
-    const user = readUsers().find((entry) => entry.email === normalizedEmail);
-    if (!user) throw new Error("ელფოსტა ან პაროლი არასწორია.");
-    const passwordHash = await hashPassword(password, user.salt);
-    if (passwordHash !== user.passwordHash) throw new Error("ელფოსტა ან პაროლი არასწორია.");
-    localStorage.setItem(SESSION_KEY, JSON.stringify({ email: normalizedEmail }));
-    return { name: user.name, email: user.email };
-  }
-
-  function logout() {
-    localStorage.removeItem(SESSION_KEY);
-  }
-
-  function getOrders() {
-    const user = getCurrentUser();
-    if (!user || !window.MovioStore) return [];
-    return window.MovioStore.getOrders().filter((order) => normalizeEmail(order.customerEmail) === user.email);
-  }
-
-  window.MovioCustomerAuth = { getCurrentUser, register, login, logout, getOrders };
-
-  const accountButton = document.querySelector("#accountButton");
-  const accountLabel = document.querySelector("#accountLabel");
-  const accountMenu = document.querySelector("#accountMenu");
-  const dialog = document.querySelector("#accountDialog");
-  const authView = document.querySelector("#accountAuthView");
-  const detailsView = document.querySelector("#accountDetailsView");
-  const loginForm = document.querySelector("#customerLoginForm");
-  const registerForm = document.querySelector("#customerRegisterForm");
-  const authMessage = document.querySelector("#authMessage");
-  const forgotPasswordButton = document.querySelector("#forgotPasswordButton");
-
-  function renderHeader() {
-    const user = getCurrentUser();
-    accountLabel.textContent = user ? user.name.trim().split(/\s+/)[0] : "შესვლა";
-    accountButton.setAttribute("aria-label", user ? `ანგარიში: ${user.name}` : "შესვლა");
-    accountButton.title = user ? user.name : "შესვლა";
-  }
-
-  function setAuthMode(mode) {
-    const isRegister = mode === "register";
-    loginForm.hidden = isRegister;
-    registerForm.hidden = !isRegister;
-    forgotPasswordButton.hidden = isRegister;
-    authMessage.textContent = "";
-    document.querySelectorAll("[data-auth-mode]").forEach((button) => {
-      button.setAttribute("aria-pressed", String(button.dataset.authMode === mode));
-    });
-  }
-
-  function openAuth(mode = "login") {
-    authView.hidden = false;
-    detailsView.hidden = true;
-    setAuthMode(mode);
-    if (!dialog.open) dialog.showModal();
-  }
-
-  function showAccountSection(section) {
-    const user = getCurrentUser();
-    if (!user) return openAuth("login");
-    authView.hidden = true;
-    detailsView.hidden = false;
-    document.querySelector("#accountGreeting").textContent = user.name;
-    const profilePanel = document.querySelector("#accountProfilePanel");
-    const ordersPanel = document.querySelector("#accountOrdersPanel");
-    profilePanel.replaceChildren();
-    ordersPanel.replaceChildren();
-    profilePanel.hidden = section !== "profile";
-    ordersPanel.hidden = section !== "orders";
-
-    if (section === "profile") {
-      profilePanel.appendChild(document.createElement("h3")).textContent = "ჩემი პროფილი";
-      profilePanel.appendChild(document.createElement("p")).textContent = `სახელი: ${user.name}`;
-      profilePanel.appendChild(document.createElement("p")).textContent = `ელფოსტა: ${user.email}`;
-    } else {
-      ordersPanel.appendChild(document.createElement("h3")).textContent = "ჩემი შეკვეთები";
-      const orders = getOrders();
-      if (!orders.length) {
-        ordersPanel.appendChild(document.createElement("p")).textContent = "შეკვეთები ჯერ არ არის.";
-      } else {
-        orders.forEach((order) => {
-          const row = document.createElement("article");
-          row.className = "account-order";
-          const title = document.createElement("strong");
-          title.textContent = order.number;
-          const summary = document.createElement("span");
-          summary.textContent = `${new Intl.DateTimeFormat("ka-GE", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(order.createdAt))} · ${new Intl.NumberFormat("ka-GE").format(order.total)} ₾`;
-          row.append(title, summary);
-          ordersPanel.appendChild(row);
-        });
+  function getCurrentUser() { return currentUser ? { ...currentUser } : null; }
+  function prefillCheckout() {
+    for (const [id, value] of [['customerName', currentUser?.name], ['customerEmail', currentUser?.email]]) {
+      const field = document.getElementById(id);
+      if (!field) continue;
+      if (!observedFields.has(field)) {
+        observedFields.add(field);
+        field.addEventListener('input', () => prefilled.delete(field));
+      }
+      if (prefilled.has(field) && field.value === prefilled.get(field)) {
+        field.value = value || '';
+        if (value) prefilled.set(field, value); else prefilled.delete(field);
+      } else if (!field.value.trim() && value) {
+        field.value = value;
+        prefilled.set(field, value);
       }
     }
+  }
+  function updateUser(user) {
+    currentUser = profile(user);
+    if (!currentUser) {
+      document.getElementById('accountOrdersPanel')?.replaceChildren();
+      document.getElementById('accountProfilePanel')?.replaceChildren();
+    }
+    renderHeader();
+    prefillCheckout();
+    window.dispatchEvent(new CustomEvent('movio:customer-auth', { detail: { user: getCurrentUser() } }));
+    if (detailsView && !detailsView.hidden) currentUser ? showAccountSection(activeSection) : openAuth('login');
+  }
+  async function register({ firstName, lastName, email: address, password }) {
+    firstName = String(firstName || '').trim();
+    lastName = String(lastName || '').trim();
+    if (!firstName || !lastName || firstName.length > 80 || lastName.length > 80) throw new Error('შეავსეთ სახელი და გვარი.');
+    if (String(password || '').length < 8) throw new Error('პაროლი უნდა შეიცავდეს მინიმუმ 8 სიმბოლოს.');
+    const { data, error } = await auth().signUp({ email: email(address), password,
+      options: { data: { first_name: firstName, last_name: lastName, full_name: `${firstName} ${lastName}` }, emailRedirectTo: redirect('confirmed') } });
+    check(error, 'რეგისტრაცია ვერ მოხერხდა. სცადეთ მოგვიანებით.');
+    if (data.session) updateUser(data.session.user);
+    return { confirmationRequired: !data.session };
+  }
+  async function login({ email: address, password }) {
+    const { data, error } = await auth().signInWithPassword({ email: email(address), password });
+    check(error, 'შესვლა ვერ მოხერხდა. შეამოწმეთ მონაცემები და სცადეთ ხელახლა.');
+    recovery = recoveryHint = false;
+    updateUser(data.user);
+    return getCurrentUser();
+  }
+  async function logout() {
+    const { error } = await auth().signOut({ scope: 'local' });
+    check(error, 'გამოსვლა ვერ მოხერხდა. სცადეთ ხელახლა.');
+    recovery = recoveryHint = false;
+    updateUser(null);
+  }
+  async function requestPasswordReset(address) {
+    const { error } = await auth().resetPasswordForEmail(email(address), { redirectTo: redirect('recovery') });
+    check(error, 'ბმულის გაგზავნა ვერ მოხერხდა. სცადეთ ცოტა მოგვიანებით.');
+  }
+  async function changePassword(password) {
+    if (!recovery || !currentUser) throw new Error('აღდგენის ბმული არასწორია ან ვადა ამოიწურა. მოითხოვეთ ახალი ბმული.');
+    if (String(password || '').length < 8) throw new Error('პაროლი უნდა შეიცავდეს მინიმუმ 8 სიმბოლოს.');
+    const { data, error } = await auth().updateUser({ password });
+    check(error, 'პაროლის შეცვლა ვერ მოხერხდა. მოითხოვეთ ახალი აღდგენის ბმული.');
+    recovery = recoveryHint = false;
+    const url = new URL(location.href);
+    url.searchParams.delete('account');
+    history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+    updateUser(data.user);
+  }
+  async function getOrders() {
+    const user = getCurrentUser();
+    if (!user) return [];
+    if (!client) throw Error('შეკვეთები დროებით მიუწვდომელია.');
+    const { data, error } = await client.from('orders')
+      .select('id,order_number,created_at,total,delivery_cost,delivery_type,total_weight_kg,order_status,payment_status,order_items(product_id,product_name,product_image,unit_price,quantity,line_total,weight_kg,free_delivery)')
+      .eq('user_id', user.id).order('created_at', { ascending: false }).limit(100);
+    if (error) throw Error('შეკვეთების ჩატვირთვა ვერ მოხერხდა. სცადეთ ხელახლა.');
+    // RLS is the security boundary. Also discard stale responses after sign-out/account switch.
+    return currentUser?.id === user.id ? (data || []) : [];
+  }
+  let ordersRequest = 0;
+  async function renderOrders(panel) {
+    const requestId = ++ordersRequest, userId = currentUser?.id;
+    const state = document.createElement('p'); state.setAttribute('role','status');
+    state.textContent = 'შეკვეთები იტვირთება…'; panel.append(state);
+    try {
+      const orders = await getOrders();
+      if (requestId !== ordersRequest || currentUser?.id !== userId || activeSection !== 'orders') return;
+      state.remove();
+      if (!orders.length) {
+        const empty = document.createElement('p'); empty.className = 'customer-orders-empty';
+        empty.textContent = 'შეკვეთები ჯერ არ გაქვთ.'; panel.append(empty); return;
+      }
+      const statuses = { received:'მიღებულია', preparing:'მზადდება', shipped:'გაგზავნილია', completed:'დასრულებულია', cancelled:'გაუქმებულია' };
+      const payments = { pending:'მოლოდინშია', paid:'გადახდილია', failed:'ვერ შესრულდა', cancelled:'გაუქმებულია', refunded:'დაბრუნებულია' };
+      const shippingTypes = {city:'ქალაქი',region:'რეგიონი',branch_pickup:'ფილიალიდან გატანა',village_highland:'სოფელი / მაღალმთიანი'};
+      const money = value => new Intl.NumberFormat('ka-GE', {style:'currency',currency:'GEL'}).format(Number(value));
+      for (const order of orders) {
+        const card = document.createElement('article'); card.className = 'customer-order';
+        card.appendChild(document.createElement('h4')).textContent = order.order_number;
+        for (const text of [new Date(order.created_at).toLocaleDateString('ka-GE', {timeZone:'Asia/Tbilisi'}),
+          `ჯამი: ${money(order.total)}`, `შეკვეთა: ${statuses[order.order_status] || '—'}`,
+          `გადახდა: ${payments[order.payment_status] || '—'}`,
+          `მიწოდების ტიპი: ${shippingTypes[order.delivery_type] || '—'}`,
+          `მიწოდება: ${order.delivery_cost != null && Number(order.delivery_cost) === 0 ? 'უფასო მიწოდება' : order.delivery_cost == null ? '—' : money(order.delivery_cost)}`,
+          `საერთო წონა: ${order.total_weight_kg == null ? '—' : order.total_weight_kg + ' კგ'}`]) card.appendChild(document.createElement('p')).textContent = text;
+        const list = document.createElement('ul');
+        for (const item of order.order_items || []) {
+          const row = document.createElement('li');
+          row.textContent = `${item.product_name} × ${item.quantity} · ${money(item.unit_price)} · ${money(item.line_total)}`;
+          list.append(row);
+        }
+        card.append(list); panel.append(card);
+      }
+      if (orders.length === 100) panel.appendChild(document.createElement('p')).textContent = 'ნაჩვენებია ბოლო 100 შეკვეთა.';
+    } catch (error) {
+      if (requestId !== ordersRequest || currentUser?.id !== userId || activeSection !== 'orders') return;
+      state.textContent = error.message;
+      const retry = document.createElement('button'); retry.type = 'button'; retry.className = 'account-back';
+      retry.textContent = 'ხელახლა ცდა'; retry.onclick = () => showAccountSection('orders'); panel.append(retry);
+    }
+  }
+  window.MovioCustomerAuth = { getCurrentUser, register, login, logout, requestPasswordReset, changePassword, getOrders, prefillCheckout };
+  const button = document.getElementById('accountButton');
+  const label = document.getElementById('accountLabel');
+  const menu = document.getElementById('accountMenu');
+  const dialog = document.getElementById('accountDialog');
+  const authView = document.getElementById('accountAuthView');
+  const detailsView = document.getElementById('accountDetailsView');
+  const loginForm = document.getElementById('customerLoginForm');
+  const registerForm = document.getElementById('customerRegisterForm');
+  const message = document.getElementById('authMessage');
+  const forgot = document.getElementById('forgotPasswordButton');
+  let activeSection = 'profile', resetForm, passwordForm;
+  if (authView) {
+    const extra = document.createElement('div');
+    extra.innerHTML = `<form class="auth-form" id="customerResetForm" hidden>
+      <p class="customer-auth-hint">შეიყვანეთ ელფოსტა და გამოგიგზავნით პაროლის აღდგენის ბმულს.</p>
+      <label for="resetEmail">ელფოსტა</label><input id="resetEmail" name="email" type="email" autocomplete="email" required>
+      <button class="auth-submit" type="submit">ბმულის გაგზავნა</button><button class="account-back" type="button" data-auth-mode="login">← შესვლაზე დაბრუნება</button></form>
+      <form class="auth-form" id="customerNewPasswordForm" hidden><p class="customer-auth-hint">შექმენით ახალი პაროლი თქვენი ანგარიშისთვის.</p>
+      <label for="newPassword">ახალი პაროლი</label><input id="newPassword" name="password" type="password" autocomplete="new-password" minlength="8" required>
+      <label for="newPasswordRepeat">პაროლის გამეორება</label><input id="newPasswordRepeat" name="passwordRepeat" type="password" autocomplete="new-password" minlength="8" required>
+      <button class="auth-submit" type="submit">პაროლის შენახვა</button></form>`;
+    authView.insertBefore(extra, message);
+    resetForm = document.getElementById('customerResetForm');
+    passwordForm = document.getElementById('customerNewPasswordForm');
+    const tabs = document.createElement('nav');
+    tabs.className = 'customer-account-tabs';
+    tabs.setAttribute('aria-label', 'ანგარიშის განყოფილებები');
+    tabs.innerHTML = '<button type="button" data-account-action="profile">ჩემი პროფილი</button><button type="button" data-account-action="orders">ჩემი შეკვეთები</button><button type="button" data-account-action="logout">გამოსვლა</button>';
+    detailsView.prepend(tabs);
+  }
+  function closeMenu() { if (menu) menu.hidden = true; button?.setAttribute('aria-expanded', 'false'); }
+  function renderHeader() {
+    if (!button) return;
+    label.textContent = currentUser ? currentUser.firstName || 'ანგარიში' : 'შესვლა';
+    button.setAttribute('aria-label', currentUser ? `ანგარიში: ${currentUser.name || currentUser.email}` : 'შესვლა');
+    button.setAttribute('aria-haspopup', currentUser ? 'menu' : 'dialog');
+    button.title = currentUser?.name || (currentUser ? 'ანგარიში' : 'შესვლა');
+    closeMenu();
+  }
+  function setMode(mode) {
+    if (!authView) return;
+    for (const [name, form] of [['login', loginForm], ['register', registerForm], ['reset', resetForm], ['recovery', passwordForm]]) form.hidden = name !== mode;
+    authView.querySelector('.auth-switch').hidden = mode === 'reset' || mode === 'recovery';
+    forgot.hidden = mode !== 'login';
+    message.textContent = '';
+    authView.querySelectorAll('[data-auth-mode]').forEach(control => control.setAttribute('aria-pressed', String(control.dataset.authMode === mode)));
+  }
+  function openAuth(mode = 'login') {
+    if (!dialog) return;
+    closeMenu(); authView.hidden = false; detailsView.hidden = true; setMode(mode);
     if (!dialog.open) dialog.showModal();
   }
-
-  accountButton.addEventListener("click", () => {
-    if (!getCurrentUser()) return openAuth("login");
-    accountMenu.hidden = !accountMenu.hidden;
-    accountButton.setAttribute("aria-expanded", String(!accountMenu.hidden));
-  });
-
-  document.querySelectorAll("[data-auth-mode]").forEach((button) => {
-    button.addEventListener("click", () => setAuthMode(button.dataset.authMode));
-  });
-
-  loginForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    authMessage.textContent = "იტვირთება...";
-    const data = new FormData(loginForm);
-    try {
-      await login({ email: data.get("email"), password: data.get("password") });
-      loginForm.reset();
-      renderHeader();
-      dialog.close();
-      authMessage.textContent = "";
-    } catch (error) {
-      authMessage.textContent = error.message || "შესვლა ვერ მოხერხდა.";
+  function showAccountSection(section) {
+    if (!dialog) return;
+    if (!currentUser) return openAuth();
+    ++ordersRequest;
+    activeSection = section; closeMenu(); authView.hidden = true; detailsView.hidden = false;
+    document.getElementById('accountGreeting').textContent = currentUser.name || 'MOVIO ანგარიში';
+    const profilePanel = document.getElementById('accountProfilePanel'), ordersPanel = document.getElementById('accountOrdersPanel');
+    profilePanel.hidden = section !== 'profile'; ordersPanel.hidden = section !== 'orders';
+    profilePanel.replaceChildren(); ordersPanel.replaceChildren();
+    detailsView.querySelectorAll('[data-account-action]').forEach(control => control.setAttribute('aria-pressed', String(control.dataset.accountAction === section)));
+    const panel = section === 'profile' ? profilePanel : ordersPanel;
+    panel.appendChild(document.createElement('h3')).textContent = section === 'profile' ? 'ჩემი პროფილი' : 'ჩემი შეკვეთები';
+    if (section === 'profile') {
+      const list = document.createElement('dl'); list.className = 'customer-profile-data';
+      for (const [title, value] of [['სახელი', currentUser.firstName], ['გვარი', currentUser.lastName], ['ელფოსტა', currentUser.email]]) {
+        list.appendChild(document.createElement('dt')).textContent = title;
+        list.appendChild(document.createElement('dd')).textContent = value || '—';
+      }
+      panel.append(list);
+    } else {
+      renderOrders(panel);
     }
-  });
-
-  registerForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const data = new FormData(registerForm);
-    if (data.get("password") !== data.get("passwordRepeat")) {
-      authMessage.textContent = "პაროლები ერთმანეთს არ ემთხვევა.";
-      return;
+    if (!dialog.open) dialog.showModal();
+  }
+  async function run(form, operation) {
+    if (busy) return;
+    busy = true;
+    const controls = [...dialog.querySelectorAll('button')].filter(control => !control.classList.contains('account-close'));
+    controls.forEach(control => { control.disabled = true; }); form?.setAttribute('aria-busy', 'true'); message.textContent = 'იტვირთება…';
+    try { await operation(); }
+    catch (error) { message.textContent = error.message || 'მოთხოვნა ვერ შესრულდა. სცადეთ მოგვიანებით.'; }
+    finally {
+      busy = false; controls.forEach(control => { control.disabled = false; }); form?.removeAttribute('aria-busy');
+      form?.querySelectorAll('input[type="password"]').forEach(field => { field.value = ''; });
     }
-    authMessage.textContent = "იტვირთება...";
-    try {
-      await register({ name: data.get("name"), email: data.get("email"), password: data.get("password") });
-      registerForm.reset();
-      renderHeader();
-      dialog.close();
-      authMessage.textContent = "";
-    } catch (error) {
-      authMessage.textContent = error.message || "რეგისტრაცია ვერ მოხერხდა.";
-    }
+  }
+  button?.addEventListener('click', () => {
+    if (recovery) return openAuth('recovery');
+    if (!currentUser) return openAuth();
+    menu.hidden = !menu.hidden; button.setAttribute('aria-expanded', String(!menu.hidden));
   });
-
-  forgotPasswordButton.addEventListener("click", () => {
-    authMessage.textContent = "პაროლის აღდგენა დემო რეჟიმში მიუწვდომელია.";
+  authView?.querySelectorAll('[data-auth-mode]').forEach(control => control.addEventListener('click', () => setMode(control.dataset.authMode)));
+  loginForm?.addEventListener('submit', event => {
+    event.preventDefault(); const data = new FormData(loginForm);
+    run(loginForm, async () => { await login({ email: data.get('email'), password: data.get('password') }); loginForm.reset(); dialog.close(); });
   });
-
-  accountMenu.addEventListener("click", (event) => {
-    const action = event.target.closest("[data-account-action]")?.dataset.accountAction;
-    if (!action) return;
-    accountMenu.hidden = true;
-    accountButton.setAttribute("aria-expanded", "false");
-    if (action === "logout") {
-      logout();
-      renderHeader();
-      return;
-    }
-    showAccountSection(action);
+  registerForm?.addEventListener('submit', event => {
+    event.preventDefault(); const data = new FormData(registerForm);
+    if (data.get('password') !== data.get('passwordRepeat')) { message.textContent = 'პაროლები ერთმანეთს არ ემთხვევა.'; return; }
+    run(registerForm, async () => {
+      const result = await register({ firstName: data.get('firstName'), lastName: data.get('lastName'), email: data.get('email'), password: data.get('password') }); registerForm.reset();
+      if (result.confirmationRequired) { setMode('login'); loginForm.elements.email.value = data.get('email'); message.textContent = 'თუ რეგისტრაცია შესაძლებელია, ელფოსტაზე მიიღებთ დადასტურების ბმულს. შეამოწმეთ შემომავალი წერილები.'; }
+      else dialog.close();
+    });
   });
-
-  document.querySelector(".account-close").addEventListener("click", () => dialog.close());
-  document.querySelector("#accountBackButton").addEventListener("click", () => dialog.close());
-
-  document.addEventListener("click", (event) => {
-    if (accountMenu.hidden || accountMenu.contains(event.target) || accountButton.contains(event.target)) return;
-    accountMenu.hidden = true;
-    accountButton.setAttribute("aria-expanded", "false");
+  forgot?.addEventListener('click', () => { setMode('reset'); resetForm.elements.email.value = loginForm.elements.email.value; });
+  resetForm?.addEventListener('submit', event => {
+    event.preventDefault(); run(resetForm, async () => { await requestPasswordReset(new FormData(resetForm).get('email')); message.textContent = 'თუ ამ ელფოსტით ანგარიში არსებობს, მიიღებთ პაროლის აღდგენის ბმულს.'; });
   });
-
-  window.addEventListener("storage", (event) => {
-    if (event.key === SESSION_KEY || event.key === USERS_KEY) renderHeader();
+  passwordForm?.addEventListener('submit', event => {
+    event.preventDefault(); const data = new FormData(passwordForm);
+    if (data.get('password') !== data.get('passwordRepeat')) { message.textContent = 'პაროლები ერთმანეთს არ ემთხვევა.'; return; }
+    run(passwordForm, async () => { await changePassword(data.get('password')); openAuth('login'); message.textContent = 'პაროლი წარმატებით შეიცვალა. შეგიძლიათ გააგრძელოთ შეძენა.'; });
   });
-
+  async function action(event) {
+    const control = event.target.closest('[data-account-action]');
+    if (!control || control.disabled) return;
+    closeMenu();
+    if (control.dataset.accountAction === 'logout') {
+      try { await logout(); dialog?.close(); } catch (error) { openAuth(); message.textContent = error.message; }
+    } else showAccountSection(control.dataset.accountAction);
+  }
+  menu?.addEventListener('click', action); detailsView?.addEventListener('click', action);
+  dialog?.querySelector('.account-close').addEventListener('click', () => dialog.close());
+  document.getElementById('accountBackButton')?.addEventListener('click', () => dialog.close());
+  dialog?.addEventListener('close', () => dialog.querySelectorAll('input[type="password"]').forEach(field => { field.value = ''; }));
+  document.addEventListener('click', event => { if (menu && !menu.contains(event.target) && !button.contains(event.target)) closeMenu(); });
+  document.addEventListener('keydown', event => { if (event.key === 'Escape') closeMenu(); });
+  document.getElementById('checkoutForm')?.addEventListener('reset', () => window.setTimeout(prefillCheckout, 0));
+  window.addEventListener('movio:order-created', () => { if (currentUser && detailsView && !detailsView.hidden && activeSection === 'orders') showAccountSection('orders'); });
   renderHeader();
+  if (client?.auth) {
+    // No async SDK calls within the synchronous auth event callback (session lock).
+    client.auth.onAuthStateChange((event, session) => {
+      eventSeen = true; updateUser(session?.user || null);
+      if ((event === 'PASSWORD_RECOVERY' || recoveryHint) && session?.user) { recovery = true; window.setTimeout(() => { if (recovery) openAuth('recovery'); }, 0); }
+      if (event === 'SIGNED_OUT') recovery = recoveryHint = false;
+    });
+    client.auth.getSession().then(({ data, error }) => {
+      if (!error && !eventSeen) updateUser(data.session?.user || null);
+      if (recoveryHint) {
+        if (currentUser) { recovery = true; openAuth('recovery'); }
+        else { openAuth('reset'); message.textContent = 'აღდგენის ბმული არასწორია ან ვადა ამოიწურა. მოითხოვეთ ახალი ბმული.'; }
+      }
+      if (new URLSearchParams(location.search).get('account') === 'confirmed') currentUser ? showAccountSection('profile') : openAuth();
+    }).catch(() => { /* Auth failure never blocks guest shopping. */ });
+  }
 })();

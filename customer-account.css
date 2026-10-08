@@ -1,0 +1,27 @@
+/* Customer account additions; existing storefront and checkout stay intact. */
+.account-dialog { max-height: calc(100vh - 28px); max-height: calc(100dvh - 28px); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.account-dialog .auth-form input { font-size: 16px; }
+.account-dialog .account-close { min-width: 44px; min-height: 44px; flex-shrink: 0; }
+.account-dialog button:focus-visible, .account-dialog input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.account-dialog button:disabled { opacity: .5; cursor: wait; }
+.customer-auth-hint { margin: 0 0 8px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+.customer-account-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.customer-account-tabs button { min-height: 44px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--ink); color: var(--paper); font: inherit; font-size: 12px; cursor: pointer; }
+.customer-account-tabs button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.customer-profile-data { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; margin: 20px 0; font-size: 13px; }
+.customer-profile-data dt { color: var(--muted); }
+.customer-profile-data dd { margin: 0; overflow-wrap: anywhere; }
+.account-dialog .customer-orders-empty { padding: 28px 16px; border: 1px dashed var(--line); border-radius: 12px; text-align: center; color: var(--muted); }
+@media (max-width: 480px) {
+  .account-dialog { padding: 18px; width: calc(100% - 24px); }
+  .customer-profile-data { grid-template-columns: 1fr; gap: 5px; }
+  .customer-profile-data dd { margin-bottom: 10px; }
+}
+
+.customer-order { padding:16px 0; border-top:1px solid #343a31; overflow-wrap:anywhere; }
+.customer-order h4 { color:#c6ff1a; margin:0 0 10px; }
+.customer-order p { margin:6px 0; }
+.customer-order ul { padding-left:20px; }
+.checkout-message.checkout-success { padding:18px; border:1px solid #c6ff1a; border-radius:12px; color:#c6ff1a; line-height:1.7; }
+#checkoutVerification { min-width:0; max-width:100%; overflow:hidden; }
+#deliveryType { width:100%; max-width:100%; min-height:44px; padding:10px; margin:8px 0 14px; background:#10130f; color:#fff; border:1px solid #343a31; border-radius:8px; font:inherit; font-size:16px; }

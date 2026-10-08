@@ -1,3 +1,10 @@
+async function initializeProductDetail() {
+  const loadingMessage = document.createElement('p');
+  loadingMessage.setAttribute('role', 'status');
+  loadingMessage.textContent = 'პროდუქტები იტვირთება…';
+  document.querySelector('main')?.prepend(loadingMessage);
+  await window.MovioStore.catalogReady;
+  loadingMessage.remove();
 ﻿const params = new URLSearchParams(window.location.search);
 const productId = params.get("item") || params.get("product");
 
@@ -90,6 +97,14 @@ if (!product) {
   });
 
   price.textContent = formatPrice(product.price);
+  const delivery = document.createElement('p');
+  delivery.className = 'detail-cart-message';
+  delivery.id = 'detailDeliveryPrice';
+  delivery.textContent = product.freeDelivery === true ? 'უფასო მიწოდება'
+    : product.weightKg != null && Number(product.weightKg) > 0
+      ? `წონა: ${Number(product.weightKg)} კგ. მიწოდება გამოითვლება კალათის საერთო წონითა და მიწოდების ტიპით.`
+      : 'პროდუქტის წონა დასაზუსტებელია.';
+  document.querySelector('.detail-pricing').after(delivery);
 
   const stockLabel =
     window.MovioStore &&
@@ -161,7 +176,7 @@ if (!product) {
       const count = Array.isArray(cart) ? cart.reduce((sum, item) => {
         const current = currentProducts.find((entry) => entry.id === item.id && entry.active !== false);
         if (!current || window.MovioStore.getStockLabel(current) !== "მარაგშია" || !Number.isInteger(item.quantity) || item.quantity < 1) return sum;
-        return sum + Math.min(item.quantity, Number(current.stock), 99);
+        return sum + Math.min(item.quantity, Number(current.stock), 100);
       }, 0) : 0;
       document.querySelector("#detailCartCount").textContent = count;
       document.querySelector(".detail-header-cart").setAttribute("aria-label", `კალათა, ${count} პროდუქტი`);
@@ -191,7 +206,7 @@ if (!product) {
       return;
     }
     updateCartCount();
-    message.textContent = previousQuantity >= Math.min(Number(current.stock), 99)
+    message.textContent = previousQuantity >= Math.min(Number(current.stock), 100)
       ? "პროდუქტი უკვე კალათაშია — მიღწეულია მარაგის მაქსიმუმი."
       : "პროდუქტი დაემატა კალათაში.";
     if (openCart) window.location.href = "cart.html";
@@ -233,3 +248,10 @@ if (!product) {
   document.querySelector("#detailRelated").hidden = false;
   document.querySelector("#detailRelatedEmpty").hidden = relatedProducts.length > 0;
 }
+
+  if (window.MovioStore.getCatalogStatus() !== 'ready' && notFound) {
+    notFound.hidden = false;
+    notFound.textContent = 'პროდუქტების ჩატვირთვა ვერ მოხერხდა. განაახლეთ გვერდი.';
+  }
+}
+initializeProductDetail();

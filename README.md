@@ -1,19 +1,17 @@
-# MOVIO — ელექტროტრანსპორტის კატალოგი
+﻿# MOVIO
 
-MOVIO-ს საპასუხო დიზაინის მქონე კატალოგი, კალათა და ადგილობრივი დემო შეკვეთების სისტემა. პროექტი მოიცავს მთავარ გვერდს, ოთხ პროდუქტის კატეგორიას, ძიებას, MOVIO-ს შესახებ ინფორმაციას, ადმინისტრირების პანელსა და შეკვეთის გაფორმებას.
+HTML/CSS/JavaScript storefront with Supabase products and optional customer Auth, hosted on Vercel. Real orders use a server endpoint and atomic database RPC. Delivery uses combined paid-product weight and the official delivery-type tariff. Free items contribute zero shipping weight, including mixed carts.
 
-კატალოგში მოცემული პროდუქტები და ფასები სადემონსტრაციოა. შეკვეთა ინახება ბრაუზერის `localStorage`-ში, ამცირებს მარაგს და ხელმისაწვდომია ადმინისტრირების პანელში გვერდის განახლების შემდეგაც. გადახდის მეთოდის არჩევა დემოა და ბარათიდან თანხას არ ჩამოჭრის.
+Read [PRODUCTION-READINESS.md](PRODUCTION-READINESS.md) for the complete migration order and [PRELAUNCH.md](PRELAUNCH.md) for Admin bootstrap before enabling checkout. Reconcile deployed migration effects before applying anything; do not rerun the already applied supabase-orders.sql. The nationwide-free-shipping migration must be the final checkout implementation. Verify the intended Admin UUID, product shipping data, Turnstile and actual database permissions before launch.
 
-## ლოკალურად ნახვა
-
-შეგიძლიათ პირდაპირ გახსნათ `index.html`, ან საქაღალდეში გაუშვათ მარტივი სტატიკური სერვერი:
+For local preview using the current Supabase catalog (local checkout is disabled):
 
 ```powershell
-python -m http.server 4173 --bind 0.0.0.0
+node scripts/dev-server.cjs
 ```
 
-იმავე კომპიუტერში გახსენით `http://localhost:4173`.
+Open http://127.0.0.1:4173. Product synchronization only reads Supabase; browser product caches are never restored or uploaded. Restart an already-running preview server after changing its code.
 
-ადმინისტრირების პანელი ხელმისაწვდომია მისამართზე `http://localhost:4173/admin.html`. საცდელი შეკვეთის შესაქმნელად დაამატეთ პროდუქტი კალათაში, შეავსეთ მომხმარებლისა და მიწოდების ველები და დაადასტურეთ შეკვეთა. პროდუქტები, მარაგი და შეკვეთები იმავე ბრაუზერში ინახება.
+For an explicit offline preview, run `node scripts/dev-server.cjs --offline`. This mode shows a visible mock notice, fetches the current in-memory catalog on every visit, and runs the Vercel handler against a simulated backend. It overrides inherited credentials and blocks outbound requests. No real orders are created. Static hosting cannot execute /api/orders. Cash on delivery remains the only payment method.
 
-iPhone-ზე `localhost` არ გამოიყენოთ — ის თავად ტელეფონს ნიშნავს. ტელეფონი და კომპიუტერი ერთ Wi-Fi ქსელში უნდა იყოს, შემდეგ გახსენით `http://<კომპიუტერის-IPv4>:4173` (IPv4 მისამართის სანახავად Windows-ში გაუშვით `ipconfig`). საჭიროების შემთხვევაში Windows Firewall-ში დაუშვით Python-ის წვდომა კერძო ქსელზე.
+[PRODUCTION-READINESS.md](PRODUCTION-READINESS.md) is the current release checklist and migration order. Admin orders are implemented. Product writes await server confirmation and removal deactivates rows to preserve cancellation stock references. No SQL, real orders, push or deployment occurred.

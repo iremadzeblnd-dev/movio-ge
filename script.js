@@ -1,4 +1,4 @@
-﻿const pageMain = document.querySelector("main");
+const pageMain = document.querySelector("main");
 const pageFooter = document.querySelector("footer");
 const searchPanel = document.querySelector(".header-search");
 const searchForm = document.querySelector(".search-form");
@@ -21,7 +21,7 @@ function getProduct(productId) {
   return {
     ...savedProduct,
     id: String(savedProduct.id),
-    categoryKey: savedProduct.category,
+    categoryKey: savedProduct.categoryKey || savedProduct.category,
     category: CATEGORY_LABELS[savedProduct.category] || savedProduct.category,
     imageAlt: savedProduct.name,
   };
@@ -47,7 +47,7 @@ function syncDiscountBadge(media, product) {
 }
 
 function setProductButtonState(button, product) {
-  button.disabled = product.stock < 1;
+  button.disabled = product.stock < 1 || window.MovioStore.getStockLabel(product) !== 'მარაგშია';
   const label = button.querySelector(".add-label");
   if (label) label.textContent = product.stock ? "კალათაში" : "ამოიწურა";
   else button.textContent = product.stock ? "კალათაში" : "ამოიწურა";
@@ -64,6 +64,7 @@ class CartStore {
 
       if (!Array.isArray(savedItems)) return [];
 
+      if (window.MovioStore.getCatalogStatus?.() !== undefined && window.MovioStore.getCatalogStatus() !== "ready") return [];
       const products = new Map(window.MovioStore.getProducts().map((product) => [String(product.id), product]));
       return savedItems
         .filter((item) => {
@@ -72,7 +73,7 @@ class CartStore {
         })
         .map((item) => {
           const product = products.get(String(item.id));
-          return { id: String(product.id), quantity: Math.min(Number(item.quantity), Math.floor(Number(product.stock))) };
+          return { id: String(product.id), quantity: Math.min(Number(item.quantity), Math.floor(Number(product.stock)), 100) };
         });
     } catch (error) {
       return [];
@@ -94,7 +95,7 @@ class CartStore {
     const existingItem = this.items.find((item) => String(item.id) === String(productId));
 
     if (existingItem) {
-      existingItem.quantity = Math.min(Number(existingItem.quantity) + 1, Math.floor(Number(product.stock)));
+      existingItem.quantity = Math.min(Number(existingItem.quantity) + 1, Math.floor(Number(product.stock)), 100);
     } else {
       this.items.push({ id: product.id, quantity: 1 });
     }
@@ -114,7 +115,7 @@ class CartStore {
     const nextQuantity = Number(quantity);
     if (!Number.isInteger(nextQuantity)) return;
     item.id = String(product.id);
-    item.quantity = Math.max(1, Math.min(nextQuantity, Math.floor(Number(product.stock))));
+    item.quantity = Math.max(1, Math.min(nextQuantity, Math.floor(Number(product.stock)), 100));
     this.save();
   }
 
@@ -147,6 +148,7 @@ const cartSubtotal = document.querySelector("[data-cart-subtotal]");
 const cartTotal = document.querySelector("[data-cart-total]");
 const cartStatus = document.querySelector(".cart-status");
 let cartCheckoutOpen = false;
+let orderBusy = false;
 
 function replaceContent(element, nodes) {
   while (element.firstChild) element.removeChild(element.firstChild);
@@ -262,7 +264,7 @@ function createCartItem(cartItem) {
       control.setAttribute("aria-label", ariaLabel);
       control.textContent = label;
       control.disabled = action === "increase"
-        ? cartItem.quantity >= Number(product.stock)
+        ? cartItem.quantity >= Math.min(Number(product.stock), 100)
         : cartItem.quantity <= 1;
     } else {
       control.setAttribute("aria-live", "polite");
@@ -278,6 +280,12 @@ function createCartItem(cartItem) {
     price.textContent = formatPrice(product.price * cartItem.quantity);
     price.setAttribute("aria-label", "პროდუქტის ჯამური ფასი");
     copy.append(price);
+    if (product.freeDelivery === true || (product.weightKg != null && Number.isFinite(Number(product.weightKg)))) {
+      const delivery = document.createElement('span');
+      delivery.className = 'cart-unit-pricing';
+      delivery.textContent = product.freeDelivery === true ? 'უფასო მიწოდება საქართველოს მასშტაბით' : `წონა: ${Number(product.weightKg)} × ${cartItem.quantity} = ${Math.round(Number(product.weightKg) * 1000) * cartItem.quantity / 1000} კგ`;
+      copy.append(delivery);
+    }
     const controls = document.createElement("div");
     controls.className = "cart-item-controls";
     const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -292,6 +300,32 @@ function createCartItem(cartItem) {
   } else item.append(media, copy, quantity, price);
 
   return item;
+}
+
+function cartHasOnlyFreeDelivery() {
+  return cartStore.items.length > 0 && cartStore.items.every(item => getProduct(item.id)?.freeDelivery === true);
+}
+
+function getCartDeliveryType() {
+  // Server requires a valid type even for nationwide free orders. This value
+  // has no effect on their charge; paid carts retain the customer's selection.
+  return cartHasOnlyFreeDelivery() ? 'city' : document.querySelector('#deliveryType')?.value || '';
+}
+
+function getCartShippingQuote() {
+  return window.MovioShipping.quote(cartStore.items.map(item => ({
+    product: getProduct(item.id), quantity: item.quantity,
+  })), getCartDeliveryType());
+}
+
+function cartShippingError(shipping) {
+  const messages = {
+    PRODUCT_WEIGHT_REQUIRED: 'პროდუქტის წონა ან მიწოდების მონაცემები დასაზუსტებელია. შეკვეთის გასაფორმებლად დაგვიკავშირდით. კალათა შენახულია.',
+    DELIVERY_CONFIRMATION_REQUIRED: '1000 კგ-ზე მეტი ტვირთის მიწოდების ფასი საჭიროებს დადასტურებას. დაგვიკავშირდით. კალათა შენახულია.',
+    DELIVERY_TYPE_REQUIRED: 'აირჩიეთ მიწოდების ტიპი შეკვეთის გასაფორმებლად.',
+    EMPTY_CART: 'კალათა ცარიელია. დაამატეთ პროდუქტი შეკვეთის გასაფორმებლად.',
+  };
+  return messages[shipping.error] || 'მიწოდების ღირებულება ვერ დადასტურდა. კალათა შენახულია. სცადეთ ხელახლა.';
 }
 
 function renderCart() {
@@ -312,42 +346,89 @@ function renderCart() {
     return total + (product ? product.price * item.quantity : 0);
   }, 0);
   cartSubtotal.textContent = formatPrice(subtotal);
-  cartTotal.textContent = formatPrice(subtotal);
+  const allFree = cartHasOnlyFreeDelivery();
+  const deliveryTypeField = document.querySelector('#deliveryTypeField');
+  if (deliveryTypeField) deliveryTypeField.hidden = allFree;
+  const deliveryType = document.querySelector('#deliveryType');
+  if (deliveryType) {
+    deliveryType.disabled = allFree || orderBusy;
+    deliveryType.required = !allFree;
+  }
+  const shipping = getCartShippingQuote();
+  const deliveryKnown = shipping.deliveryCost != null && !['DELIVERY_CONFIRMATION_REQUIRED','PRODUCT_WEIGHT_REQUIRED'].includes(shipping.error);
+  const deliveryPrice = shipping.deliveryCost;
+  const checkoutDelivery = document.querySelector('#checkoutDelivery');
+  if (checkoutDelivery) checkoutDelivery.textContent = deliveryKnown
+    ? deliveryPrice === 0 ? 'მიწოდება — უფასო (0 ₾)' : `მიწოდება: ${formatPrice(deliveryPrice)}`
+    : cartShippingError(shipping);
+  const canCheckout = hasItems && shipping.ok;
+  document.querySelector('#cartWeight').textContent = shipping.totalWeightKg == null ? 'დასაზუსტებელია' : `${shipping.totalWeightKg} კგ`;
+  const deliverySummary = document.querySelector('#deliverySummary');
+  if (deliverySummary) {
+    deliverySummary.hidden = !hasItems;
+    const label = document.querySelector('#deliveryLabel');
+    if (label) label.textContent = deliveryKnown && deliveryPrice === 0 ? 'მიწოდება —' : 'მიწოდება';
+    document.querySelector('#deliveryCost').textContent = deliveryKnown
+      ? deliveryPrice === 0 ? 'უფასო (0 ₾)' : formatPrice(deliveryPrice)
+      : 'დასაზუსტებელია';
+  }
+  const deliveryNotice = document.querySelector('#deliveryNotice');
+  if (deliveryNotice) {
+    deliveryNotice.hidden = !hasItems || canCheckout;
+    deliveryNotice.textContent = canCheckout ? '' : cartShippingError(shipping);
+  }
+  cartTotal.textContent = !hasItems ? formatPrice(0) : deliveryKnown ? formatPrice(subtotal + deliveryPrice) : 'დასაზუსტებელია';
   const mobileTotal = document.querySelector("#mobileCartTotal");
-  if (mobileTotal) mobileTotal.textContent = formatPrice(subtotal);
+  if (mobileTotal) mobileTotal.textContent = cartTotal.textContent;
   const mobileCheckout = document.querySelector("#mobileCartCheckout");
-  if (mobileCheckout) mobileCheckout.disabled = !hasItems;
+  if (mobileCheckout) mobileCheckout.disabled = !hasItems || orderBusy;
   const checkoutForm = document.querySelector("#checkoutForm");
   if (!hasItems) {
     cartCheckoutOpen = false;
     document.body.classList.remove("mobile-checkout-open");
   }
-  if (checkoutForm) checkoutForm.hidden = !hasItems || (document.body.classList.contains("cart-page") && !cartCheckoutOpen);
+  if (checkoutForm) {
+    checkoutForm.hidden = !canCheckout || (document.body.classList.contains("cart-page") && !cartCheckoutOpen);
+    checkoutForm.querySelector('[type=submit]').disabled = !canCheckout || orderBusy;
+  }
   const desktopCheckout = document.querySelector("#desktopCartCheckout");
   if (desktopCheckout) {
-    desktopCheckout.disabled = !hasItems;
+    desktopCheckout.disabled = !hasItems || orderBusy;
     desktopCheckout.setAttribute("aria-expanded", String(cartCheckoutOpen));
   }
-  const demoCheckoutButton = document.querySelector("#demoCheckoutButton");
-  if (demoCheckoutButton) {
-    const localDemoHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
-    const paymentUnavailable = document.documentElement.dataset.paymentAvailable !== "true";
-    demoCheckoutButton.hidden = !localDemoHost || !hasItems || !paymentUnavailable || typeof window.MovioStore?.createOrder !== "function" || (document.body.classList.contains("cart-page") && !cartCheckoutOpen);
-  }
+  renderPendingCheckout();
 }
 
-function openCartCheckout() {
+async function openCartCheckout() {
   const form = document.querySelector("#checkoutForm");
-  if (!form || !cartStore.items.length) return;
+  if (!form || orderBusy) return;
+  const message = document.querySelector('#checkoutMessage');
+  const shipping = getCartShippingQuote();
+  if (!shipping.ok) {
+    message.classList.remove('checkout-success');
+    message.textContent = cartShippingError(shipping);
+    message.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+  if (!message.classList.contains('checkout-success')) message.textContent = '';
   cartCheckoutOpen = true;
   document.body.classList.add("mobile-checkout-open");
   renderCart();
   form.scrollIntoView({ behavior: "smooth", block: "start" });
   form.querySelector("input")?.focus({ preventScroll: true });
+  try {
+    await window.MovioOrders.prepare();
+    renderCart();
+  } catch (error) { document.querySelector('#checkoutMessage').textContent = error.message; }
 }
 
 document.querySelector("#mobileCartCheckout")?.addEventListener("click", openCartCheckout);
 document.querySelector("#desktopCartCheckout")?.addEventListener("click", openCartCheckout);
+document.querySelector('#deliveryType')?.addEventListener('change', () => {
+  const message = document.querySelector('#checkoutMessage');
+  if (message && !message.classList.contains('checkout-success')) message.textContent = '';
+  renderCart();
+});
 
 function goToCart(productName) {
   if (cartStatus) cartStatus.textContent = `${productName} დაემატა კალათაში.`;
@@ -423,7 +504,7 @@ function syncCatalogProducts() {
 
 
 function getProductCategoryKey(product) {
-  const raw = String(product?.category || product?.categoryKey || "")
+  const raw = String(product?.categoryKey || product?.category || "")
     .trim()
     .toLocaleLowerCase("ka-GE");
 
@@ -487,7 +568,7 @@ function applyCatalogFilter(categoryKey) {
   if (label) label.textContent = CATEGORY_LABELS[activeCategoryFilter] || "";
   if (filterState) filterState.hidden = !activeCategoryFilter;
   const emptyState = document.querySelector("#catalogEmpty");
-  if (emptyState) emptyState.hidden = visibleCount > 0;
+  if (emptyState) emptyState.hidden = visibleCount > 0 || window.MovioStore.getCatalogStatus?.() !== "ready";
 }
 
 
@@ -602,64 +683,126 @@ document.addEventListener("click", (event) => {
 
 const checkoutForm = document.querySelector("#checkoutForm");
 const checkoutMessage = document.querySelector("#checkoutMessage");
-const demoCheckoutButton = document.querySelector("#demoCheckoutButton");
-const localDemoHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
-
-document.querySelectorAll(".local-demo-only").forEach((element) => {
-  element.hidden = !localDemoHost;
-});
-
-function placeCartOrder(paymentMethod, useDemoDetails) {
-  if (!cartStore.items.length) return;
-
+async function placeCartOrder(paymentMethod) {
+  if (window.MovioStore.getCatalogStatus?.() !== "ready") return;
+  cartStore.items = cartStore.load();
+  if (orderBusy || !cartStore.items.length || !checkoutForm.reportValidity()) return;
+  const shipping = getCartShippingQuote();
+  if (!shipping.ok) {
+    checkoutMessage.textContent = cartShippingError(shipping);
+    return;
+  }
   const formData = new FormData(checkoutForm);
-  const field = (name, fallback) => {
-    const value = String(formData.get(name) || "").trim();
-    return value || fallback;
+  const names = String(formData.get("name") || "").trim().split(/\s+/);
+  if (names.length < 2) { checkoutMessage.textContent = "შეავსეთ სახელი და გვარი."; return; }
+  const purchased = cartStore.items.map(item => ({ ...item }));
+  const input = {
+    customer: { firstName: names[0], lastName: names.slice(1).join(' '),
+      email: String(formData.get('email') || '').trim(), phone: String(formData.get('phone') || '').trim(),
+      city: String(formData.get('city') || '').trim(), address: String(formData.get('address') || '').trim() },
+    paymentMethod,
+    deliveryType: getCartDeliveryType(),
+    items: purchased.map(item => ({ id: String(item.id), quantity: item.quantity,
+      expectedPrice: Number(getProduct(item.id)?.price),
+      expectedWeightKg: getProduct(item.id)?.weightKg == null ? null : Number(getProduct(item.id)?.weightKg),
+      expectedFreeDelivery: getProduct(item.id)?.freeDelivery })),
   };
-  const submitButtons = [...checkoutForm.querySelectorAll("[type=submit]"), demoCheckoutButton].filter(Boolean);
-  submitButtons.forEach((button) => { button.disabled = true; });
-  checkoutMessage.textContent = "შეკვეთა მუშავდება...";
+  const fingerprint = JSON.stringify({ ...input, user: window.MovioCustomerAuth?.getCurrentUser()?.id || null });
+  let pending;
+  try { pending = JSON.parse(sessionStorage.getItem('movio-pending-checkout') || 'null'); }
+  catch {
+    checkoutMessage.textContent = 'წინა შეკვეთის მონაცემები ვერ გადამოწმდა. დაგვიკავშირდით ახალი შეკვეთის გაფორმებამდე.';
+    return;
+  }
+  if (pending && pending.fingerprint !== fingerprint) {
+    checkoutMessage.textContent = "წინა შეკვეთის პასუხი ჯერ არ დადასტურდა. აღადგინეთ წინა მონაცემები და სცადეთ ხელახლა ან დაგვიკავშირდით.";
+    return;
+  }
+  pending ||= { fingerprint, token: crypto.randomUUID(), input, purchased,
+    userId: window.MovioCustomerAuth?.getCurrentUser()?.id || null, outcomeUncertain: false };
+  await submitCartOrder(pending.input || input, pending, pending.purchased || purchased);
+}
 
+async function submitCartOrder(input, pending, purchased) {
+  if (orderBusy) return;
+  orderBusy = true;
+  const controls = [...checkoutForm.querySelectorAll('input,textarea,select,button'), ...cartSection.querySelectorAll('[data-cart-action],#desktopCartCheckout,#mobileCartCheckout,#deliveryType')];
+  const states = controls.map(control => control.disabled);
+  controls.forEach(control => { control.disabled = true; });
+  checkoutForm.setAttribute('aria-busy','true');
+  checkoutMessage.classList.remove('checkout-success');
+  checkoutMessage.textContent = "შეკვეთა მუშავდება...";
   try {
-    const order = window.MovioStore.createOrder({
-      name: useDemoDetails ? field("name", "დემო მომხმარებელი") : formData.get("name"),
-      customerEmail: window.MovioCustomerAuth?.getCurrentUser()?.email || "",
-      phone: useDemoDetails ? field("phone", "555 01 23 45") : formData.get("phone"),
-      city: useDemoDetails ? field("city", "თბილისი") : formData.get("city"),
-      address: useDemoDetails ? field("address", "რუსთაველის გამზირი 1") : formData.get("address"),
-      paymentMethod,
-      items: cartStore.items,
-    });
-    cartStore.clear();
+    const order = await window.MovioOrders.createOrder({ ...input, checkoutToken: pending.token }, pending);
+    sessionStorage.removeItem('movio-pending-checkout');
+    // Reconcile persisted cart so items added in another tab during checkout survive.
+    let current = cartStore.items;
+    try { const saved = JSON.parse(localStorage.getItem(CartStore.storageKey)); if (Array.isArray(saved)) current = saved; } catch {}
+    cartStore.items = current.map(item => {
+      const bought = purchased.find(entry => String(entry.id) === String(item.id));
+      return { id: String(item.id), quantity: Number(item.quantity) - (bought?.quantity || 0) };
+    }).filter(item => item.quantity > 0);
+    cartStore.save();
     checkoutForm.reset();
-    renderCart();
-    checkoutMessage.textContent = useDemoDetails
-      ? `დემო შეკვეთა ${order.number} წარმატებით შეიქმნა.`
-      : `შეკვეთა ${order.number} წარმატებით შეიქმნა.`;
+    checkoutMessage.classList.add('checkout-success');
+    checkoutMessage.textContent = `მადლობა, რომ აირჩიეთ MOVIO! შეკვეთა ${order.number} მიღებულია. ჯამი: ${formatPrice(Number(order.total))}. გადახდა — მიღებისას. შეკვეთის დეტალებზე დაგიკავშირდებით.`;
     cartStatus.textContent = checkoutMessage.textContent;
+    window.dispatchEvent(new CustomEvent('movio:order-created'));
   } catch (error) {
-    checkoutMessage.textContent = error.message || "შეკვეთა ვერ შეიქმნა. სცადეთ ხელახლა.";
+    if (error.definitive && pending.outcomeUncertain === false) sessionStorage.removeItem('movio-pending-checkout');
+    checkoutMessage.textContent = error.message || "შეკვეთის პასუხი ვერ მივიღეთ. კალათა შენახულია. სცადეთ ხელახლა იგივე მონაცემებით.";
   } finally {
-    submitButtons.forEach((button) => { button.disabled = false; });
+    orderBusy = false;
+    controls.forEach((control, index) => { control.disabled = states[index]; });
+    checkoutForm.removeAttribute('aria-busy');
+    renderCart();
+    renderPendingCheckout();
+  }
+}
+
+function renderPendingCheckout() {
+  if (!checkoutForm || !checkoutMessage) return;
+  let pending;
+  try { pending = JSON.parse(sessionStorage.getItem('movio-pending-checkout') || 'null'); } catch {}
+  let button = document.getElementById('retryPendingCheckout');
+  if (!button) {
+    button = document.createElement('button');
+    button.id = 'retryPendingCheckout';
+    button.type = 'button';
+    button.className = 'checkout-submit';
+    button.textContent = 'წინა შეკვეთის პასუხის აღდგენა';
+    checkoutMessage.after(button);
+    button.addEventListener('click', async () => {
+      let saved;
+      try { saved = JSON.parse(sessionStorage.getItem('movio-pending-checkout') || 'null'); } catch {}
+      if (!saved?.input || !Array.isArray(saved.purchased) || orderBusy) return;
+      // Keep the original confirmation values even after stock/price changes.
+      // PostgreSQL returns an existing receipt before checking current products.
+      checkoutForm.hidden = false;
+      button.dataset.recovering = 'true';
+      await submitCartOrder(saved.input, saved, saved.purchased);
+    });
+  }
+  button.hidden = !pending?.input || !Array.isArray(pending.purchased);
+  button.disabled = orderBusy;
+  if (!button.hidden) document.body.classList.add('mobile-checkout-open');
+  if (!button.hidden && button.dataset.recovering === 'true') checkoutForm.hidden = false;
+  if (!button.hidden && !checkoutMessage.textContent) {
+    checkoutMessage.textContent = 'წინა შეკვეთის პასუხი დასადასტურებელია. აღადგინეთ პასუხი ხელახლა.';
   }
 }
 
 if (checkoutForm) {
   checkoutForm.addEventListener("submit", (event) => {
     event.preventDefault();
-    placeCartOrder(new FormData(checkoutForm).get("paymentMethod"), false);
+    placeCartOrder(new FormData(checkoutForm).get("paymentMethod"));
   });
-}
-
-if (demoCheckoutButton) {
-  demoCheckoutButton.addEventListener("click", () => placeCartOrder("დემო", true));
 }
 
 function handleCartControlClick(event) {
   const target = event.target instanceof Element ? event.target : event.target?.parentElement;
   const button = target?.closest("button[data-cart-action]");
-  if (!button || button.disabled || !cartSection.contains(button)) return;
+  if (orderBusy || !button || button.disabled || !cartSection.contains(button)) return;
   const row = button.closest(".cart-item[data-product-id]");
   if (!row || !cartItems.contains(row)) return;
 
@@ -704,8 +847,30 @@ window.addEventListener("storage", (event) => {
   }
 });
 
+function renderCatalogStatus() {
+  const status = window.MovioStore.getCatalogStatus();
+  let message = document.getElementById('catalogSyncMessage');
+  if (!message) {
+    message = document.createElement('p');
+    message.id = 'catalogSyncMessage';
+    message.setAttribute('role', 'status');
+    (document.querySelector('#catalog') || pageMain)?.prepend(message);
+  }
+  message.hidden = status === 'ready';
+  message.textContent = status === 'loading' ? 'პროდუქტები იტვირთება…'
+    : status === 'error' ? 'პროდუქტების ჩატვირთვა ვერ მოხერხდა. განაახლეთ გვერდი.' : '';
+}
+window.addEventListener('movio:catalog', () => {
+  cartStore.items = cartStore.load();
+  syncCatalogProducts();
+  renderCart();
+  renderCatalogStatus();
+  if (searchInput?.value) renderSearchResults(searchInput.value);
+});
 syncCatalogProducts();
 renderCart();
+renderCatalogStatus();
+renderPendingCheckout();
 window.addEventListener("hashchange", () => {
   if (window.location.hash === "#cart") {
     if (!document.body.classList.contains("cart-page")) {

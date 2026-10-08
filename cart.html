@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ka" data-payment-available="false">
   <head>
     <meta charset="UTF-8" />
@@ -18,10 +18,13 @@
     <link rel="stylesheet" href="styles.css?v=cart-checkout-20261005-8" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabaseClient.js" defer></script>
-<script src="store.js?v=cart-quantity-20261005-10" defer></script>
-<script src="supabase-sync.js" defer></script>
-    <script src="script.js?v=cart-quantity-20261005-10" defer></script>
-    <script src="customer-auth.js" defer></script>
+<script src="store.js?v=readiness-20261008" defer></script>
+<script src="supabase-sync.js?v=readiness-20261008" defer></script>
+<script src="shipping.js?v=nationwide-free-20261008" defer></script>
+<script src="orders.js?v=readiness-20261008" defer></script>
+    <script src="script.js?v=readiness-20261008" defer></script>
+    <link rel="stylesheet" href="customer-account.css?v=prelaunch-20261008-2" />
+    <script src="customer-auth.js?v=prelaunch-20261008-2" defer></script>
   </head>
   <body class="cart-page cart-horizontal-page">
     <a class="skip-link" href="#top">მთავარ შიგთავსზე გადასვლა</a>
@@ -53,7 +56,7 @@
           <div class="account-menu" id="accountMenu" role="menu" hidden>
             <button type="button" role="menuitem" data-account-action="profile">ჩემი პროფილი</button>
             <button type="button" role="menuitem" data-account-action="orders">ჩემი შეკვეთები</button>
-            <button type="button" role="menuitem" data-account-action="logout">გასვლა</button>
+            <button type="button" role="menuitem" data-account-action="logout">გამოსვლა</button>
           </div>
         </div>
       </header>
@@ -67,13 +70,14 @@
             <button class="auth-submit" type="submit">შესვლა</button>
           </form>
           <form class="auth-form" id="customerRegisterForm" hidden>
-            <label for="registerName">სახელი</label><input id="registerName" name="name" autocomplete="name" required maxlength="80">
+            <label for="registerName">სახელი</label><input id="registerName" name="firstName" autocomplete="given-name" required maxlength="80">
+            <label for="registerLastName">გვარი</label><input id="registerLastName" name="lastName" autocomplete="family-name" required maxlength="80">
             <label for="registerEmail">ელფოსტა</label><input id="registerEmail" name="email" type="email" autocomplete="email" required>
             <label for="registerPassword">პაროლი</label><input id="registerPassword" name="password" type="password" autocomplete="new-password" minlength="8" required>
             <label for="registerPasswordRepeat">პაროლის გამეორება</label><input id="registerPasswordRepeat" name="passwordRepeat" type="password" autocomplete="new-password" minlength="8" required>
             <button class="auth-submit" type="submit">რეგისტრაცია</button>
           </form>
-          <button class="forgot-password" id="forgotPasswordButton" type="button">დაგავიწყდა პაროლი?</button>
+          <button class="forgot-password" id="forgotPasswordButton" type="button">პაროლი დაგავიწყდა?</button>
           <p class="auth-message" id="authMessage" role="status" aria-live="polite"></p>
         </section>
         <section id="accountDetailsView" hidden>
@@ -227,34 +231,50 @@
 
             <aside class="cart-summary" aria-label="კალათის შეჯამება">
               <p class="summary-label">კალათის შეჯამება</p>
+              <p id="catalogSyncMessage" role="status" aria-live="polite" hidden></p>
+              <div id="deliveryTypeField">
+              <label for="deliveryType">მიწოდების ტიპი</label>
+              <select id="deliveryType" name="deliveryType" form="checkoutForm" required>
+                <option value="">აირჩიეთ მიწოდების ტიპი</option>
+                <option value="city">ქალაქი</option>
+                <option value="region">რეგიონი</option>
+                <option value="branch_pickup">ფილიალიდან გატანა</option>
+                <option value="village_highland">სოფელი / მაღალმთიანი</option>
+              </select>
+              </div>
               <div class="summary-row">
                 <span>პროდუქტების ფასი</span>
                 <span data-cart-subtotal>ინფორმაცია ჯერ არ არის მოწოდებული</span>
               </div>
+              <div class="summary-row" id="deliverySummary" hidden><span id="deliveryLabel">მიწოდება</span><span id="deliveryCost"></span></div>
               <div class="summary-total">
-                <span>ჯამი</span>
+                <span>სულ გადასახდელი</span>
                 <strong data-cart-total>ინფორმაცია ჯერ არ არის მოწოდებული</strong>
               </div>
               <button class="checkout-submit desktop-cart-checkout" id="desktopCartCheckout" type="button" aria-controls="checkoutForm" aria-expanded="false" disabled>გადახდა</button>
               <form class="checkout-form" id="checkoutForm" hidden>
+                <p id="checkoutDelivery" role="status"></p>
                 <label for="customerName">სახელი და გვარი</label>
-                <input id="customerName" name="name" autocomplete="name" required />
+                <input id="customerName" name="name" autocomplete="name" maxlength="161" required />
+                <label for="customerEmail">ელფოსტა (არასავალდებულო)</label>
+                <input id="customerEmail" name="email" type="email" autocomplete="email" maxlength="254" />
                 <label for="customerPhone">ტელეფონი</label>
-                <input id="customerPhone" name="phone" type="tel" autocomplete="tel" required />
+                <input id="customerPhone" name="phone" type="tel" autocomplete="tel" maxlength="30" required />
                 <label for="customerCity">ქალაქი</label>
-                <input id="customerCity" name="city" autocomplete="address-level2" required />
+                <input id="customerCity" name="city" autocomplete="address-level2" maxlength="100" required />
                 <label for="customerAddress">მისამართი</label>
-                <textarea id="customerAddress" name="address" autocomplete="street-address" required></textarea>
+                <textarea id="customerAddress" name="address" autocomplete="street-address" maxlength="500" required></textarea>
                 <label for="paymentMethod">გადახდის მეთოდი</label>
                 <select id="paymentMethod" name="paymentMethod" required>
-                  <option value="მიღებისას ნაღდი ანგარიშსწორება">მიღებისას ნაღდი ანგარიშსწორება</option>
-                  <option class="local-demo-only" value="ბანკის გადარიცხვა (დემო)" hidden>ბანკის გადარიცხვა (დემო)</option>
+                  <option value="cash_on_delivery">მიღებისას ნაღდი ანგარიშსწორება</option>
                 </select>
+                <div id="checkoutVerification"></div>
                 <button class="checkout-submit" type="submit">შეკვეთის დადასტურება</button>
               </form>
-              <button class="checkout-submit demo-checkout-submit" id="demoCheckoutButton" type="button" hidden>დემო შეკვეთის შექმნა</button>
               <p class="checkout-message" id="checkoutMessage" role="status" aria-live="polite"></p>
-              <p class="summary-note">სადემონსტრაციო ფასები. გადახდა ამ ვერსიაში არ მუშავდება.</p>
+              <div class="summary-row"><span>საერთო წონა</span><span id="cartWeight">—</span></div>
+              <p class="summary-note">გადახდა — მიღებისას ნაღდი ანგარიშსწორებით. მიწოდება გამოითვლება საერთო წონითა და არჩეული მიწოდების ტიპით.</p>
+              <p class="summary-note" id="deliveryNotice" role="status" hidden></p>
             </aside>
           </div>
           <p class="cart-status" role="status" aria-live="polite"></p>
@@ -270,10 +290,10 @@
             <h2 id="promise-title">მკაფიო არჩევანი.<br /><span>მარტივი გზა.</span></h2>
             <div class="promise-copy">
               <p>
-                MOVIO არის ელექტროტრანსპორტისა და მანქანის აქსესუარების ციფრული კატალოგის კონცეფცია. გვერდის მიზანია კატეგორიების მკაფიოდ, მარტივად და ქართულად წარმოდგენა.
+                MOVIO — ელექტროტრანსპორტისა და მანქანის აქსესუარების ონლაინ კატალოგი.
               </p>
               <p>
-                კატალოგში განთავსდება მხოლოდ დადასტურებული პროდუქტის ინფორმაცია და შესაბამისი ფოტოები, როდესაც საჭირო მასალა მოწოდებული იქნება.
+                შეარჩიეთ პროდუქტი, დაამატეთ კალათაში და შეავსეთ შეკვეთის ფორმა. პროდუქტისა და მიწოდების ღირებულება ჩანს შეკვეთის დადასტურებამდე.
               </p>
               <div class="promise-points">
                 <span><i>01</i> მკაფიო კატეგორიები</span>
@@ -290,21 +310,21 @@
               <p class="section-index">05 / ხშირად დასმული კითხვები</p>
               <h2 id="faq-title">მოკლე პასუხები.<br /><span>მარტივი არჩევანი.</span></h2>
             </div>
-            <p>ძირითადი ინფორმაცია MOVIO-ს საინფორმაციო კატალოგის შესახებ.</p>
+            <p>ძირითადი ინფორმაცია შეკვეთისა და მიწოდების შესახებ.</p>
           </div>
 
           <div class="faq-list">
             <details id="faq-catalog-info">
-              <summary>რა ინფორმაცია განთავსდება კატალოგში?</summary>
-              <p>მხოლოდ დადასტურებული პროდუქტის აღწერები, ტექნიკური ინფორმაცია და შესაბამისი ფოტოები, როდესაც მასალა მოწოდებული იქნება.</p>
+              <summary>სად ვნახო პროდუქტის ინფორმაცია?</summary>
+              <p>პროდუქტის გვერდზე ჩანს ფასი, აღწერა, მახასიათებლები და მიწოდების ინფორმაცია.</p>
             </details>
             <details id="faq-purchase">
               <summary>შესაძლებელია ამ გვერდიდან პროდუქტის შეძენა?</summary>
-              <p>პროდუქტის კალათაში დამატება შესაძლებელია, თუმცა შეძენა და გადახდა ამ პროტოტიპში ხელმისაწვდომი არ არის.</p>
+              <p>შეკვეთა ფორმდება კალათიდან. გადახდის მოქმედი მეთოდია მიღებისას ნაღდი ანგარიშსწორება. შეძენა შეგიძლიათ სტუმრის სტატუსითაც.</p>
             </details>
             <details id="faq-photos">
-              <summary>რატომ არის გამოყენებული ფოტოს ადგილები?</summary>
-              <p>ზოგიერთი კატეგორიის რეალური პროდუქტის ფოტო ჯერ არ არის მოწოდებული. მონიშნული ადგილები აჩვენებს, სად დაემატება შესაბამისი მასალა.</p>
+              <summary>როგორ ითვლება მიწოდების ფასი?</summary>
+              <p>უფასო მიწოდების პროდუქტებზე მიწოდება 0 ₾ ღირს საქართველოს მასშტაბით. სხვა პროდუქტებისთვის ფასი ითვლება წონითა და არჩეული მიწოდების ტიპით.</p>
             </details>
           </div>
         </section>
@@ -322,9 +342,14 @@
           <a href="#cart">კალათა</a>
           <a href="#about">MOVIO-ს შესახებ</a>
           <a href="#faq">ხშირი კითხვები</a>
+          <a href="delivery.html">მიწოდება</a>
+          <a href="contact.html">კონტაქტი</a>
+          <a href="returns.html">დაბრუნება / გარანტია</a>
+          <a href="privacy.html">კონფიდენციალურობის პოლიტიკა</a>
+          <a href="terms.html">წესები და პირობები</a>
         </nav>
         <div class="footer-bottom">
-          <span>© 2026 MOVIO</span>
+          <span>© 2026 MOVIO. ყველა უფლება დაცულია.</span>
         </div>
       </footer>
     </div>

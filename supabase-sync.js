@@ -1,8 +1,7 @@
 ﻿(function () {
   const client = window.movioSupabase;
-  const STORAGE_KEY = "movio-data-v1";
 
-  if (!client || !window.MovioStore) return;
+  if (!window.MovioStore) return;
 
   function toDb(product) {
     return {
@@ -11,6 +10,8 @@
       category: product.category || "",
       category_key: product.categoryKey || null,
       price: Number(product.price || 0),
+      weight_kg: product.weightKg == null ? null : Number(product.weightKg),
+      free_delivery: product.freeDelivery === true,
       old_price: product.oldPrice ? Number(product.oldPrice) : null,
       stock: Number(product.stock || 0),
       description: product.description || "",
@@ -36,12 +37,15 @@
       category: row.category,
       categoryKey: row.category_key || row.category,
       price: Number(row.price || 0),
+      weightKg: row.weight_kg == null ? null : Number(row.weight_kg),
+      freeDelivery: typeof row.free_delivery === 'boolean' ? row.free_delivery : null,
       oldPrice: row.old_price == null ? null : Number(row.old_price),
       stock: Number(row.stock || 0),
       description: row.description || "",
       specifications: Array.isArray(row.specifications) ? row.specifications : [],
       image: row.image || "",
       active: row.active !== false,
+      updatedAt: row.updated_at || null,
       oldPriceVisible: row.old_price_visible !== false,
       discountVisible: row.discount_visible === true,
       discountPercent: Number(row.discount_percent ?? 0),
@@ -53,97 +57,79 @@
     };
   }
 
-  async function syncFromSupabase() {
-    const { data, error } = await client
-      .from("products")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("MOVIO Supabase sync error:", error);
-      return;
-    }
-
+  let pendingSync;
+  async function fetchCatalog() {
+    window.MovioStore.setCatalog([], "loading");
     try {
-      const state = JSON.parse(
-        localStorage.getItem(STORAGE_KEY) ||
-        '{"products":[],"orders":[]}'
-      );
-
-      const remoteProducts = (data || [])
-        .filter((row) => !window.MovioStore.isLegacyDemoProduct(row))
-        .map(fromDb);
-      const currentProducts = Array.isArray(state.products)
-        ? state.products
-        : [];
-
-      const currentJson = JSON.stringify(currentProducts);
-      const remoteJson = JSON.stringify(remoteProducts);
-
-      if (currentJson !== remoteJson) {
-        state.products = remoteProducts;
-        if (!Array.isArray(state.orders)) state.orders = [];
-
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-        window.location.reload();
-      }
+      if (!client) throw new Error("Supabase client unavailable");
+      let timer;
+      let result;
+      try {
+        result = await Promise.race([
+          client.from('products').select('*').order('created_at', {ascending:false}),
+          new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Catalog request timed out')), 15000); })
+        ]);
+      } finally { clearTimeout(timer); }
+      const { data, error } = result;
+      if (error) throw error;
+      if (!Array.isArray(data)) throw new Error("Invalid catalog response");
+      window.MovioStore.setCatalog(data.map(fromDb));
     } catch (error) {
-      console.error("MOVIO local cache error:", error);
+      console.error("MOVIO Supabase sync error:", error);
+      window.MovioStore.setCatalog([], "error");
     }
+  }
+  function syncFromSupabase() {
+    if (!pendingSync) pendingSync = fetchCatalog().finally(() => { pendingSync = null; });
+    return pendingSync;
   }
 
   const originalSaveProduct = window.MovioStore.saveProduct;
   const originalDeleteProduct = window.MovioStore.deleteProduct;
 
+  function requireAdmin() {
+    if (window.movioAdminAuthorized !== true) throw new Error('Admin authorization required');
+  }
+  async function requireSession() {
+    requireAdmin();
+    const { data, error } = await client.auth.getSession();
+    if (error || !data?.session) throw new Error('Admin session unavailable');
+    requireAdmin();
+  }
   window.MovioStore.saveProduct = function (product) {
-  const saved = originalSaveProduct(product);
-
-  (async () => {
-    try {
-      const { data: sessionData, error: sessionError } =
-        await client.auth.getSession();
-
-      if (sessionError) throw sessionError;
-
-      if (!sessionData.session) {
-        alert("Supabase: Admin-ის სესია ვერ მოიძებნა. თავიდან შედი Admin-ში.");
-        return;
-      }
-
-      const { error } = await client
-        .from("products")
-        .upsert(toDb(saved), { onConflict: "id" });
-
-      if (error) throw error;
-
-      alert("✅ პროდუქტი ონლაინ ბაზაშიც წარმატებით დაემატა.");
-    } catch (error) {
-      console.error("SUPABASE SAVE ERROR:", error);
-      alert("❌ Supabase შეცდომა: " + (error?.message || String(error)));
-    }
-  })();
-
-  return saved;
-};
-
+    requireAdmin();
+    const saved = window.MovioStore.validateProduct(product);
+    const previous = window.MovioStore.getProducts().find(item => String(item.id) === saved.id);
+    return (async () => {
+      await requireSession();
+      const row = toDb(saved);
+      // Reject stale edits rather than overwriting a checkout stock reservation.
+      let query = previous
+        ? client.from('products').update(row).eq('id', saved.id).eq('stock', previous.stock).eq('stock_status', previous.stockStatus).eq('active', previous.active !== false)
+        : client.from('products').insert(row);
+      if (previous?.updatedAt) query = query.eq('updated_at', previous.updatedAt);
+      const { data, error } = await query.select('id,updated_at');
+      if (error || !Array.isArray(data) || data.length !== 1) throw new Error('პროდუქტი ვერ შეინახა ან მარაგი შეიცვალა. განაახლეთ გვერდი და სცადეთ ხელახლა.');
+      requireAdmin();
+      saved.updatedAt = data[0].updated_at || row.updated_at;
+      return originalSaveProduct(saved);
+    })();
+  };
   window.MovioStore.deleteProduct = function (id) {
-    originalDeleteProduct(id);
-
-    client
-      .from("products")
-      .delete()
-      .eq("id", id)
-      .then(({ error }) => {
-        if (error) {
-          console.error(error);
-          alert("პროდუქტი ლოკალურად წაიშალა, მაგრამ ონლაინ ბაზიდან ვერ წაიშალა.");
-        }
-      });
+    requireAdmin();
+    return (async () => {
+      await requireSession();
+      // Deactivate instead of deleting reserved products needed for cancellation.
+      const { data, error } = await client.from('products').update({active:false,updated_at:new Date().toISOString()}).eq('id', String(id)).select('id');
+      if (error || !Array.isArray(data) || data.length !== 1) throw new Error('პროდუქტის წაშლა ვერ მოხერხდა. სცადეთ ხელახლა.');
+      requireAdmin();
+      originalDeleteProduct(id);
+    })();
   };
 
   window.MovioStore.syncFromSupabase = syncFromSupabase;
 
-  syncFromSupabase();
+  window.MovioStore.catalogReady = syncFromSupabase();
 })();
 
 

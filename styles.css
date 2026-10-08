@@ -5838,7 +5838,7 @@ body:not(.cart-page) .quantity-control button:disabled { opacity: 0.4; cursor: n
   .cart-horizontal-page .cart-status,
   .cart-horizontal-page .cart-summary { display: none; }
   .cart-horizontal-page.mobile-checkout-open .cart-summary { display: block; border: 0; padding: 0; background: transparent; }
-  .cart-horizontal-page.mobile-checkout-open .cart-summary > :not(.checkout-form):not(.checkout-message) { display: none; }
+  .cart-horizontal-page.mobile-checkout-open .cart-summary > :not(.checkout-form):not(.checkout-message):not(#retryPendingCheckout) { display: none; }
   .cart-horizontal-page #cart { padding-top: 12px; }
 }
 .cart-horizontal-page .cart-item-copy .cart-item-price { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.4; }
