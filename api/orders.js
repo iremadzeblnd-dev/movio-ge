@@ -1,6 +1,10 @@
 // Vercel Node function. All privileged credentials stay in server environment variables.
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const message = 'შეკვეთის გაფორმება დროებით მიუწვდომელია. კალათა შენახულია.';
+// Public payment capabilities. Keep online methods disabled until the bank's
+// documented server API, signed notifications and DB migration are implemented.
+const paymentPolicy = Object.freeze({ currency: 'GEL', onlinePaymentAvailable: false,
+  methods: Object.freeze(['cash_on_delivery']) });
 class InvalidCheckout extends Error {}
 const turnstileCodes = new Set(['missing-input-secret','invalid-input-secret','missing-input-response',
   'invalid-input-response','bad-request','timeout-or-duplicate','internal-error']);
@@ -21,7 +25,8 @@ module.exports = async function handler(req, res) {
   const configured = env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY && env.SUPABASE_PUBLISHABLE_KEY
     && env.TURNSTILE_SECRET_KEY && env.TURNSTILE_SITE_KEY && origins.length;
   if (!configured) return reply(503, message);
-  if (req.method === 'GET') return res.status(200).json({ siteKey: env.TURNSTILE_SITE_KEY, deliveryRule: 'weight_tariff_v1' });
+  if (req.method === 'GET') return res.status(200).json({ siteKey: env.TURNSTILE_SITE_KEY,
+    deliveryRule: 'weight_tariff_v1', payment: paymentPolicy });
   if (req.method !== 'POST') { res.setHeader('Allow', 'GET, POST'); return reply(405, message); }
   if (!origins.includes(req.headers.origin)) return reply(403, message);
   if (!String(req.headers['content-type'] || '').startsWith('application/json')) return reply(415, message);
@@ -44,7 +49,7 @@ module.exports = async function handler(req, res) {
     };
     if (!/^[+\d\s()-]+$/.test(customer.phone) || customer.phone.replace(/\D/g,'').length < 7
       || (customer.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email))) throw new InvalidCheckout();
-    if (!UUID.test(body.checkoutToken) || body.paymentMethod !== 'cash_on_delivery'
+    if (!UUID.test(body.checkoutToken) || !paymentPolicy.methods.includes(body.paymentMethod)
       || body.deliveryRule !== 'weight_tariff_v1'
       || !['city','region','branch_pickup','village_highland'].includes(body.deliveryType)
       || !Array.isArray(body.items) || body.items.length < 1 || body.items.length > 50) throw new InvalidCheckout();
@@ -94,6 +99,10 @@ module.exports = async function handler(req, res) {
       reportTurnstileFailure(verified.action !== 'checkout' ? 'action-mismatch' : 'hostname-mismatch', verified, verification.status);
       return reply(403, 'გაიარეთ უსაფრთხოების შემოწმება ხელახლა.');
     }
+    // Future bank initiation must use persisted order totals/currency and a
+    // separate idempotent server flow. Browser totals/status/return URLs cannot
+    // confirm payment; only authenticated bank notifications may update it.
+    // The current RPC/schema deliberately support cash_on_delivery only.
     const db = await request(`${env.SUPABASE_URL}/rest/v1/rpc/movio_place_order`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', apikey: env.SUPABASE_SERVICE_ROLE_KEY,
         Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },

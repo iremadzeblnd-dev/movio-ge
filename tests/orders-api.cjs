@@ -74,7 +74,12 @@ async function run(body=input(),headers={},method='POST'){calls=[];const res={se
  r=await run({...input(),items:[{...input().items[0],quantity:11}]});assert.equal(r.statusCode,409);
  products.a.active=false;r=await run();assert.equal(r.statusCode,409,'Deactivated products rejected by authoritative RPC response');products.a.active=true;
  r=await run({...input(),items:[{...input().items[0],id:'deleted'}]});assert.equal(r.statusCode,409,'Missing products rejected');
- r=await run(null,{},'GET');assert.deepEqual(r.body,{siteKey:'site-test',deliveryRule:'weight_tariff_v1'});
+ for(const paymentMethod of ['card','bank','cash_on_delivery ',null,{},['cash_on_delivery']]) {
+   r=await run({...input(),paymentMethod});assert.equal(r.statusCode,400);
+   assert.equal(calls.length,0,'Disabled payment methods cannot verify tokens or create orders');
+ }
+ r=await run(null,{},'GET');assert.deepEqual(r.body,{siteKey:'site-test',deliveryRule:'weight_tariff_v1',
+   payment:{currency:'GEL',onlinePaymentAvailable:false,methods:['cash_on_delivery']}});
  const verificationCall=calls.find(c=>c.url.includes('siteverify'));
  // GET emits only public configuration; POST alone sends the secret to Siteverify.
  assert.equal(verificationCall,undefined);
