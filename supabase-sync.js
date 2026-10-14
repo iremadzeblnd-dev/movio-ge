@@ -17,6 +17,7 @@
       description: product.description || "",
       specifications: Array.isArray(product.specifications) ? product.specifications : [],
       image: product.image || "",
+      images: product.images,
       active: product.active !== false,
       old_price_visible: product.oldPriceVisible !== false,
       discount_visible: product.discountVisible === true,
@@ -44,6 +45,7 @@
       description: row.description || "",
       specifications: Array.isArray(row.specifications) ? row.specifications : [],
       image: row.image || "",
+      images: Array.isArray(row.images) ? row.images : (row.image ? [row.image] : []),
       active: row.active !== false,
       updatedAt: row.updated_at || null,
       oldPriceVisible: row.old_price_visible !== false,
@@ -109,6 +111,9 @@
         : client.from('products').insert(row);
       if (previous?.updatedAt) query = query.eq('updated_at', previous.updatedAt);
       const { data, error } = await query.select('id,updated_at');
+      if (error?.code === 'PGRST204' || error?.code === '42703') {
+        throw new Error('პროდუქტის სქემა განახლებას საჭიროებს. ადმინისტრატორმა უნდა შეამოწმოს საჭირო მიგრაციები, მათ შორის supabase-product-images.sql.');
+      }
       if (error || !Array.isArray(data) || data.length !== 1) throw new Error('პროდუქტი ვერ შეინახა ან მარაგი შეიცვალა. განაახლეთ გვერდი და სცადეთ ხელახლა.');
       requireAdmin();
       saved.updatedAt = data[0].updated_at || row.updated_at;

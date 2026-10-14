@@ -1,3 +1,4 @@
+let productImages = [], mainProductImage = "", imageReadPending = false, imageGeneration = 0;
 let adminOrders = [], ordersGeneration = 0, ordersBusy = false;
 function adminCustomers() {
   const customers = new Map();
@@ -269,6 +270,7 @@ function showView(viewName) {
 function resetProductForm() {
   const form = document.querySelector("#productForm");
   form.reset();
+  imageGeneration++; productImages = []; mainProductImage = ""; imageReadPending = false; renderProductImages();
   document.querySelector("#productSpecifications").replaceChildren();
   document.querySelector("#productId").value = "";
   document.querySelector("#productStock").value = 1;
@@ -319,6 +321,9 @@ document.querySelector('#productFreeDelivery').addEventListener('change', update
 function editProduct(product) {
   if (window.movioAdminAuthorized !== true) return;
   const form = document.querySelector("#productForm");
+  imageGeneration++; imageReadPending = false;
+  productImages = MovioStore.normalizeImages(product).images; mainProductImage = product.image || productImages[0] || "";
+  document.querySelector("#productImage").value = ""; renderProductImages();
   form.hidden = false;
   document.querySelector("#productFormHeading").textContent = "პროდუქტის რედაქტირება";
   document.querySelector("#productId").value = product.id;
@@ -352,6 +357,61 @@ function readImage(file) {
     reader.readAsDataURL(file);
   });
 }
+
+function renderProductImages() {
+  const list = document.querySelector('#productImageList');
+  list.replaceChildren();
+  document.querySelector('#productImageMessage').textContent = '';
+  document.querySelector('#productImageProgress').hidden = true;
+  productImages.forEach((src, index) => {
+    const card = element('div', 'admin-image-entry');
+    const img = document.createElement('img'); img.src = src; img.alt = `ფოტო ${index + 1}`;
+    img.addEventListener('error', () => { img.hidden = true; card.prepend(element('span', '', 'ფოტო მიუწვდომელია')); });
+    card.append(img);
+    const action = (label, run, disabled = false) => {
+      const button = element('button', '', label); button.type = 'button'; button.disabled = disabled;
+      button.addEventListener('click', () => {
+        if (imageReadPending || document.querySelector('#productForm').hasAttribute('aria-busy') || window.movioAdminAuthorized !== true) return;
+        run(); renderProductImages();
+      }); card.append(button);
+    };
+    action(src === mainProductImage ? 'მთავარი ✓' : 'მთავარი', () => { mainProductImage = src; });
+    action('←', () => { [productImages[index - 1], productImages[index]] = [productImages[index], productImages[index - 1]]; }, index === 0);
+    action('→', () => { [productImages[index + 1], productImages[index]] = [productImages[index], productImages[index + 1]]; }, index === productImages.length - 1);
+    action('წაშლა', () => { productImages.splice(index, 1); if (src === mainProductImage) mainProductImage = productImages[0] || ''; });
+    list.append(card);
+  });
+}
+
+document.querySelector('#productImage').addEventListener('change', async event => {
+  const input = event.target, files = [...input.files], generation = imageGeneration;
+  if (imageReadPending || document.querySelector('#productForm').hasAttribute('aria-busy') || window.movioAdminAuthorized !== true) return;
+  imageReadPending = true; input.disabled = true;
+  const progress = document.querySelector('#productImageProgress'), message = document.querySelector('#productImageMessage');
+  progress.max = files.length; progress.value = 0; progress.hidden = false;
+  try {
+    // Validate the entire batch before modifying the editor; duplicate bytes are ignored.
+    const additions = [];
+    for (const file of files) {
+      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || !/\.(jpe?g|png|webp)$/i.test(file.name)) throw Error('მხარდაჭერილია მხოლოდ JPG, PNG და WebP.');
+      if (!file.size || file.size > 5 * 1024 * 1024) throw Error('თითო ფოტო უნდა იყოს 5 MB-მდე და არ უნდა იყოს ცარიელი.');
+      const header = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+      const signature = file.type === 'image/jpeg' ? header[0] === 255 && header[1] === 216 && header[2] === 255
+        : file.type === 'image/png' ? [137,80,78,71,13,10,26,10].every((byte, i) => header[i] === byte)
+        : [82,73,70,70].every((byte, i) => header[i] === byte) && [87,69,66,80].every((byte, i) => header[i + 8] === byte);
+      if (!signature) throw Error('ფოტოს შიგთავსი არჩეულ ფორმატს არ შეესაბამება.');
+      const src = await readImage(file);
+      const probe = new Image(); probe.src = src;
+      try { await probe.decode(); } catch { throw Error('ფოტო დაზიანებულია ან ფორმატი არასწორია.'); }
+      if (generation !== imageGeneration || window.movioAdminAuthorized !== true) return;
+      if (!productImages.includes(src) && !additions.includes(src)) additions.push(src);
+      progress.value++; message.textContent = `${progress.value} / ${files.length}`;
+    }
+    productImages.push(...additions); if (!mainProductImage) mainProductImage = productImages[0] || '';
+    renderProductImages(); message.textContent = 'ფოტოები მზადაა. ცვლილებების შესანახად შეინახეთ პროდუქტი.';
+  } catch (error) { if (generation === imageGeneration) message.textContent = error.message; }
+  finally { if (generation === imageGeneration) { imageReadPending = false; progress.hidden = true; } input.value = ''; input.disabled = false; }
+});
 
 function showCustomerHistory(phone, name) {
   if (window.movioAdminAuthorized !== true) return;
@@ -388,7 +448,7 @@ document.querySelector("#closeCustomerDialog").addEventListener("click", () => d
 document.querySelector("#productForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = event.currentTarget;
-  if (form.hasAttribute('aria-busy')) return;
+  if (form.hasAttribute('aria-busy') || imageReadPending) return;
   form.setAttribute('aria-busy','true');
   const submit = form.querySelector('[type="submit"]');
   if (submit) submit.disabled = true;
@@ -397,8 +457,9 @@ document.querySelector("#productForm").addEventListener("submit", async (event) 
   const id = data.get("id") || `product-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
   const previous = MovioStore.getProducts().find((product) => product.id === id);
   try {
-    const image = await readImage(data.get("image").size ? data.get("image") : null);
+    const image = mainProductImage;
     const product = {
+      ...previous,
       id,
       name: data.get("name").trim(),
       category: data.get("category"),
@@ -418,10 +479,14 @@ document.querySelector("#productForm").addEventListener("submit", async (event) 
         label: label.trim(),
         value: String(data.getAll("specificationValue")[index] || "").trim(),
       })).filter((entry) => entry.label || entry.value),
-      image: image || previous?.image || "",
-      active: true,
+      image,
+      images: [...productImages],
+      active: previous?.active !== false,
     };
     if (window.movioAdminAuthorized !== true) return;
+    message.textContent = "ფოტოები და პროდუქტი ინახება…";
+    const saveProgress = document.querySelector('#productImageProgress');
+    saveProgress.removeAttribute('value'); saveProgress.hidden = false;
     await MovioStore.saveProduct(product);
     if (window.movioAdminAuthorized !== true) return;
     resetProductForm();
@@ -431,6 +496,7 @@ document.querySelector("#productForm").addEventListener("submit", async (event) 
   } catch (error) {
     message.textContent = error.message || "პროდუქტი ვერ შეინახა. შეამოწმეთ ბრაუზერის საცავის სივრცე.";
   } finally {
+    document.querySelector('#productImageProgress').hidden = true;
     form.removeAttribute('aria-busy');
     if (submit) submit.disabled = false;
   }

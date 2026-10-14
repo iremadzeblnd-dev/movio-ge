@@ -154,19 +154,45 @@ if (!product) {
     quantity.textContent = `${Number(product.stock) || 0} ცალი`;
   }
 
-  if (product.image) {
-
-    image.src = product.image;
-    image.alt = productName;
-    image.hidden = false;
-    noPhoto.hidden = true;
-
-  } else {
-
-    image.hidden = true;
-    noPhoto.hidden = false;
-
+  const galleryImages = MovioStore.normalizeImages(product).images;
+  let selectedImage = Math.max(0, galleryImages.indexOf(product.image));
+  const media = image.closest('figure');
+  const thumbnails = document.createElement('div'); thumbnails.className = 'product-gallery-thumbnails';
+  const controls = document.createElement('div'); controls.className = 'product-gallery-controls';
+  const counter = document.createElement('span'); counter.setAttribute('aria-live', 'polite');
+  function showImage(index) {
+    if (!galleryImages.length) { image.hidden = true; noPhoto.hidden = false; return; }
+    selectedImage = (index + galleryImages.length) % galleryImages.length;
+    image.src = galleryImages[selectedImage]; image.alt = `${productName} — ${selectedImage + 1}`;
+    image.hidden = false; noPhoto.hidden = true;
+    counter.textContent = `${selectedImage + 1} / ${galleryImages.length}`;
+    [...thumbnails.children].forEach((button, i) => button.setAttribute('aria-pressed', String(i === selectedImage)));
   }
+  image.addEventListener('error', () => { image.hidden = true; noPhoto.hidden = false; });
+  galleryImages.forEach((src, index) => {
+    const button = document.createElement('button'); button.type = 'button'; button.setAttribute('aria-label', `ფოტო ${index + 1}`);
+    const thumb = document.createElement('img'); thumb.src = src; thumb.alt = ''; thumb.loading = 'lazy';
+    thumb.addEventListener('error', () => { thumb.hidden = true; button.textContent = String(index + 1); });
+    button.append(thumb); button.addEventListener('click', () => showImage(index)); thumbnails.append(button);
+  });
+  for (const [label, step] of [['წინა ფოტო', -1], ['შემდეგი ფოტო', 1]]) {
+    const button = document.createElement('button'); button.type = 'button'; button.textContent = step < 0 ? '←' : '→';
+    button.setAttribute('aria-label', label); button.addEventListener('click', () => showImage(selectedImage + step)); controls.append(button);
+  }
+  controls.insertBefore(counter, controls.lastChild);
+  // Keep controls outside the clipped frame containing the absolute-positioned image.
+  controls.hidden = thumbnails.hidden = galleryImages.length < 2;
+  media.closest('.detail-product-gallery').append(controls, thumbnails);
+  let touchStart;
+  image.addEventListener('touchstart', event => { const touch = event.touches[0]; touchStart = event.touches.length === 1 ? {x:touch.clientX,y:touch.clientY} : null; }, {passive:true});
+  image.addEventListener('touchend', event => {
+    if (!touchStart || !event.changedTouches.length) return;
+    const dx = event.changedTouches[0].clientX - touchStart.x, dy = event.changedTouches[0].clientY - touchStart.y;
+    if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) showImage(selectedImage + (dx < 0 ? 1 : -1));
+    touchStart = null;
+  }, {passive:true});
+  image.addEventListener('touchcancel', () => { touchStart = null; });
+  showImage(selectedImage);
 
   const available =
     stockLabel === "მარაგშია" &&

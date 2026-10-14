@@ -6,7 +6,7 @@
   let catalogStatus = "loading";
 
   function setCatalog(products, status = "ready") {
-    catalog = status === "ready" ? clone(products) : [];
+    catalog = status === "ready" ? clone(products).map(normalizeImages) : [];
     catalogStatus = status;
     if (status === "ready") {
       const state = readState();
@@ -100,8 +100,14 @@
     return raw;
   }
 
+  function normalizeImages(product) {
+    const images = [...new Set((Array.isArray(product.images) ? product.images : [product.image]).filter(value => typeof value === "string" && value.trim()))];
+    const image = images.includes(product.image) ? product.image : (images[0] || "");
+    return { ...product, images, image };
+  }
+
   function validateProduct(product) {
-    const savedProduct = { ...product };
+    const savedProduct = normalizeImages(product);
     savedProduct.id = String(savedProduct.id || '').trim();
     savedProduct.name = String(savedProduct.name || '').trim();
     savedProduct.price = Number(savedProduct.price);
@@ -226,6 +232,7 @@
   }
 
   window.MovioStore = {
+    normalizeImages,
     setCatalog,
     getCatalogStatus: () => catalogStatus,
     isLegacyDemoProduct,

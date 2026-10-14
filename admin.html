@@ -185,7 +185,8 @@
     .product-specifications-editor button{padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface2);color:var(--accent)}
     #addSpecificationButton{margin-top:10px;align-self:start}
     @media(max-width:600px){.admin-specification-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.admin-specification-row button{grid-column:1/-1}}
-</style>
+.admin-image-list{display:flex;flex-wrap:wrap;gap:12px}.admin-image-entry{width:150px;border:1px solid var(--line);padding:8px}.admin-image-entry img{width:100%;height:100px;object-fit:contain}.admin-image-entry button{margin:3px;min-height:32px}
+  </style>
   
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabaseClient.js" defer></script>
@@ -288,7 +289,8 @@
             <div class="field"><div class="field-heading"><label for="productDiscountPercent">ფასდაკლება (%)</label><label class="stock-visibility-toggle" for="productDiscountVisible" aria-label="ფასდაკლების პროცენტის ჩვენება"><input id="productDiscountVisible" name="discountVisible" type="checkbox" value="true" role="switch"><span class="stock-visibility-track" aria-hidden="true"></span></label></div><input id="productDiscountPercent" name="discountPercent" type="number" min="0" max="100" step="any" value="0" required></div>
             <div class="field"><div class="field-heading"><label for="productStock">მარაგი</label><label class="stock-visibility-toggle" for="productStockQuantityVisible" aria-label="მარაგის რაოდენობის ჩვენება"><input id="productStockQuantityVisible" name="stockQuantityVisible" type="checkbox" value="true" role="switch"><span class="stock-visibility-track" aria-hidden="true"></span></label></div><input id="productStock" name="stock" type="number" min="0" step="1" value="1" required></div>
             <div class="field"><div class="field-heading"><label for="productStockStatus">მარაგის სტატუსი</label><label class="stock-visibility-toggle" for="productStockStatusVisible" aria-label="მარაგის სტატუსის ჩვენება"><input id="productStockStatusVisible" name="stockStatusVisible" type="checkbox" value="true" role="switch" checked><span class="stock-visibility-track" aria-hidden="true"></span></label></div><select id="productStockStatus" name="stockStatus" required><option value="მარაგშია">მარაგშია</option><option value="ამოიწურა">ამოიწურა</option></select></div>
-            <div class="field"><label for="productImage">ფოტო</label><input id="productImage" name="image" type="file" accept="image/*"></div>
+            <div class="field"><label for="productImage">ფოტო</label><input id="productImage" name="image" type="file" accept="image/jpeg,image/png,image/webp" multiple></div>
+            <div class="field field-full"><p>JPG, PNG, WebP · მაქსიმუმ 5 MB თითო ფოტო. მთავარი ფოტო ცალკე აირჩიეთ.</p><div id="productImageList" class="admin-image-list"></div><progress id="productImageProgress" hidden></progress><p id="productImageMessage" role="status" aria-live="polite"></p></div>
             <div class="field field-full"><label for="productDescription">აღწერა</label><textarea id="productDescription" name="description" maxlength="1000"></textarea></div>
             <section class="field field-full product-specifications-editor" aria-labelledby="specificationsHeading">
               <h3 id="specificationsHeading">მახასიათებლები</h3>
