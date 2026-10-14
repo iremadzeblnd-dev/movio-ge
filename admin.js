@@ -1,5 +1,12 @@
 let productImages = [], mainProductImage = "", imageReadPending = false, imageGeneration = 0;
 let adminOrders = [], ordersGeneration = 0, ordersBusy = false;
+const productCategorySelect = document.querySelector('#productCategory');
+MovioStore.getCategories().forEach(category => {
+  const option = document.createElement('option');
+  option.value = category.key;
+  option.textContent = category.label;
+  productCategorySelect.appendChild(option);
+});
 function adminCustomers() {
   const customers = new Map();
   for (const order of adminOrders) {
@@ -37,12 +44,7 @@ async function loadAdminOrders() {
 }
 document.getElementById('refreshAdminOrders').addEventListener('click', loadAdminOrders);
 
-﻿const CATEGORY_LABELS = {
-  "electric-scooters": "ელექტრო სკუტერები",
-  "electric-bikes": "ელექტრო ველოსიპედები",
-  "quad-bikes": "კვადრო ციკლები",
-  "car-accessories": "მანქანის აქსესუარები",
-};
+const CATEGORY_LABELS = Object.fromEntries(MovioStore.getCategories().map(category => [category.key, category.label]));
 
 const ORDER_STATUSES = [
   ["received", "მიღებულია"],
@@ -285,6 +287,7 @@ function resetProductForm() {
   document.querySelector("#productStockStatusVisible").checked = true;
   document.querySelector("#productFormHeading").textContent = "ახალი პროდუქტი";
   document.querySelector("#productMessage").textContent = "";
+  document.querySelector('#productCategoryMessage').textContent = '';
   form.hidden = true;
 }
 
@@ -329,6 +332,8 @@ function editProduct(product) {
   document.querySelector("#productId").value = product.id;
   document.querySelector("#productName").value = product.name;
   document.querySelector("#productCategory").value = MovioStore.getCategoryKey(product);
+  document.querySelector('#productCategoryMessage').textContent = productCategorySelect.value ? ''
+    : `არსებული კატეგორია: ${product.category || product.categoryKey || '—'}. აირჩიეთ კატეგორია სიიდან.`;
   document.querySelector("#productPrice").value = product.price;
   document.querySelector("#productWeightKg").value = product.weightKg ?? '';
   document.querySelector("#productFreeDelivery").checked = product.freeDelivery === true;
@@ -463,6 +468,7 @@ document.querySelector("#productForm").addEventListener("submit", async (event) 
       id,
       name: data.get("name").trim(),
       category: data.get("category"),
+      categoryKey: data.get("category"),
       price: Number(data.get("price")),
       weightKg: data.get("weightKg") === '' ? null : Number(data.get("weightKg")),
       freeDelivery: data.get("freeDelivery") !== null,

@@ -27,7 +27,7 @@
     stock.classList.toggle("stock-unavailable", stock.textContent === "ამოიწურა");
     document.querySelector("[data-product-price]").textContent = money(product.price);
     const oldPriceRow = document.querySelector("[data-product-old-price-row]");
-    oldPriceRow.hidden = product.oldPriceVisible === false || !(Number(product.oldPrice) > 0);
+    oldPriceRow.hidden = !window.MovioStore.shouldShowOldPrice(product);
     document.querySelector("[data-product-old-price]").textContent = money(product.oldPrice);
     document.querySelector("[data-product-quantity-row]").hidden = product.stockQuantityVisible !== true;
     document.querySelector("[data-product-quantity]").textContent = `${product.stock} ცალი`;

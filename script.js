@@ -7,12 +7,7 @@ const searchMessage = document.querySelector(".search-message");
 const searchResults = document.querySelector(".search-results");
 let activeCategoryFilter = new URLSearchParams(window.location.search).get("category") || "";
 
-const CATEGORY_LABELS = {
-  "electric-scooters": "ელექტრო სკუტერები",
-  "electric-bikes": "ელექტრო ველოსიპედები",
-  "quad-bikes": "კვადრო ციკლები",
-  "car-accessories": "მანქანის აქსესუარები",
-};
+const CATEGORY_LABELS = Object.fromEntries(window.MovioStore.getCategories().map(category => [category.key, category.label]));
 
 function getProduct(productId) {
   const savedProduct = window.MovioStore.getProducts().find((product) => String(product.id) === String(productId));
@@ -21,7 +16,7 @@ function getProduct(productId) {
   return {
     ...savedProduct,
     id: String(savedProduct.id),
-    categoryKey: savedProduct.categoryKey || savedProduct.category,
+    categoryKey: window.MovioStore.getCategoryKey(savedProduct),
     category: CATEGORY_LABELS[savedProduct.category] || savedProduct.category,
     imageAlt: savedProduct.name,
   };
@@ -245,7 +240,7 @@ function createCartItem(cartItem) {
     const current = document.createElement("strong");
     current.textContent = formatPrice(product.price);
     pricing.append(current);
-    if (product.oldPriceVisible !== false && Number(product.oldPrice) > 0) {
+    if (window.MovioStore.shouldShowOldPrice(product)) {
       const old = document.createElement("del");
       old.textContent = formatPrice(product.oldPrice);
       pricing.append(old);
@@ -436,8 +431,18 @@ function goToCart(productName) {
   window.location.href = "cart.html";
 }
 
+const pendingCardImages = new WeakMap();
+const cardImageObserver = typeof IntersectionObserver === 'function' ? new IntersectionObserver(entries => {
+  for (const entry of entries) if (entry.isIntersecting) {
+    cardImageObserver.unobserve(entry.target);
+    pendingCardImages.get(entry.target)?.();
+  }
+}, {rootMargin:'300px'}) : null;
+
 function renderProductCard(article, product) {
   article.classList.add("compact-product-card");
+  article.dataset.productId = String(product.id);
+  article.dataset.productCategory = getProductCategoryKey(product);
   article.removeAttribute("tabindex");
   const existingArt = article.querySelector(".placeholder-art")?.cloneNode(true);
   const copy = createTextElement("div", "category-detail-copy");
@@ -448,6 +453,11 @@ function renderProductCard(article, product) {
   link.href = `item.html?item=${encodeURIComponent(product.id)}`;
   title.appendChild(link);
   const price = createTextElement("span", "product-price-label", formatPrice(product.price));
+  const prices = createTextElement("div", "product-card-prices");
+  prices.appendChild(price);
+  if (window.MovioStore.shouldShowOldPrice(product)) {
+    prices.appendChild(createTextElement("s", "product-old-price-label", formatPrice(product.oldPrice)));
+  }
   const actions = createTextElement("div", "product-actions");
   const buy = createTextElement("button", "add-to-cart product-buy");
   buy.type = "button";
@@ -464,7 +474,7 @@ function renderProductCard(article, product) {
   icon.appendChild(createCartIcon());
   cart.appendChild(icon);
   actions.append(buy, cart);
-  copy.append(title, price, actions);
+  copy.append(title, prices, actions);
   const media = createTextElement("div", "product-media");
   if (product.image) {
     const image = document.createElement("img");
@@ -479,6 +489,22 @@ function renderProductCard(article, product) {
   } else {
     media.appendChild(createTextElement("span", "product-no-image", "MOVIO"));
   }
+  if (!product.image && product.imagesLoaded === false && window.MovioStore.loadProductImageData) {
+    const loadImage = () => window.MovioStore.loadProductImageData(product.id).then(row => {
+      if (!article.isConnected || !row.image) return;
+      // A changed revision requires fresh price/stock metadata too, not just a new photo.
+      if (product.updatedAt && row.updated_at && row.updated_at !== product.updatedAt) {
+        window.MovioStore.syncFromSupabase(); return;
+      }
+      const image = document.createElement('img'); image.alt = product.name;
+      image.loading = 'lazy'; image.decoding = 'async'; image.fetchPriority = 'low'; image.src = row.image;
+      image.addEventListener('error', () => { image.replaceWith(createTextElement('span','product-no-image','MOVIO')); });
+      media.querySelector('.product-no-image')?.remove(); media.prepend(image);
+    }).catch(() => { /* A photo failure must not remove the product card. */ });
+    pendingCardImages.set(article, loadImage);
+    if (cardImageObserver) cardImageObserver.observe(article);
+    else setTimeout(loadImage, 0);
+  }
   syncDiscountBadge(media, product);
   article.replaceChildren(media, copy);
 }
@@ -486,6 +512,7 @@ function renderProductCard(article, product) {
 function renderManagedProducts() {
   const mount = document.querySelector("[data-managed-products]");
   if (!mount) return;
+  cardImageObserver?.disconnect();
   const customProducts = window.MovioStore.getProducts().filter((product) => product.active !== false);
   const articles = customProducts.map((product) => {
     const article = document.createElement("article");
@@ -507,6 +534,7 @@ function getProductCategoryKey(product) {
   return window.MovioStore.getCategoryKey(product);
 }
 function applyCatalogFilter(categoryKey) {
+  categoryKey = window.MovioStore.getCategoryKey({ categoryKey });
   document.querySelectorAll("[data-category-filter]").forEach((card) => {
     card.classList.toggle(
       "category-active",
@@ -517,9 +545,7 @@ function applyCatalogFilter(categoryKey) {
   const cards = document.querySelectorAll("#catalog .product-grid .category-detail");
   let visibleCount = 0;
   cards.forEach((card) => {
-    const productButton = card.querySelector(".add-to-cart[data-product-id]");
-    const product = productButton ? getProduct(productButton.dataset.productId) : null;
-    card.hidden = Boolean(activeCategoryFilter) && getProductCategoryKey(product) !== activeCategoryFilter;
+    card.hidden = Boolean(activeCategoryFilter) && card.dataset.productCategory !== activeCategoryFilter;
     if (!card.hidden) visibleCount += 1;
   });
 
@@ -600,13 +626,39 @@ document.addEventListener("click", (event) => {
 });
 
 document.querySelectorAll("[data-category-filter]").forEach((link) => {
-  link.addEventListener("click", () => applyCatalogFilter(link.dataset.categoryFilter));
+  link.addEventListener("click", (event) => {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    navigateCatalogCategory(link.dataset.categoryFilter);
+  });
 });
 
 document.querySelector("#clearCategoryFilter").addEventListener("click", () => {
-  applyCatalogFilter("");
-  window.location.hash = "catalog";
+  navigateCatalogCategory("");
 });
+
+function navigateCatalogCategory(category) {
+  const key = window.MovioStore.getCategoryKey({ categoryKey: category });
+  const url = new URL(location.href);
+  if (key) url.searchParams.set('category', key);
+  else url.searchParams.delete('category');
+  url.hash = 'catalog';
+  if (url.href !== location.href) history.pushState(null, '', url);
+  applyCatalogFilter(key);
+  document.querySelector('#catalog')?.scrollIntoView({ block: 'start' });
+}
+
+function restoreCatalogView() {
+  // History can restore a document without running load or the catalog request again.
+  activeCategoryFilter = new URLSearchParams(location.search).get('category') || '';
+  syncCatalogProducts();
+  renderCatalogStatus();
+  if (window.MovioStore.getCatalogStatus() === 'error') {
+    window.MovioStore.syncFromSupabase?.();
+  }
+}
+window.addEventListener('popstate', restoreCatalogView);
+window.addEventListener('pageshow', restoreCatalogView);
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !searchResults.hidden) {

@@ -266,21 +266,10 @@
             <div class="field"><label for="productName">პროდუქტის სახელი</label><input id="productName" name="name" required maxlength="120"></div>
             <div class="field">
   <label for="productCategory">კატეგორია</label>
-  <input
-    id="productCategory"
-    name="category"
-    type="text"
-    list="productCategorySuggestions"
-    placeholder="ჩაწერე კატეგორიის სახელი"
-    autocomplete="off"
-    required
-  >
-  <datalist id="productCategorySuggestions">
-    <option value="ელექტრო სკუტერები">
-    <option value="ელექტრო ველოსიპედები">
-    <option value="კვადრო ციკლები">
-    <option value="მანქანის აქსესუარები">
-  </datalist>
+  <select id="productCategory" name="category" required>
+    <option value="">აირჩიეთ კატეგორია</option>
+  </select>
+  <small id="productCategoryMessage" class="muted" role="status"></small>
 </div>
             <div class="field"><label for="productPrice">მიმდინარე ფასი (₾)</label><input id="productPrice" name="price" type="number" min="0.01" step="0.01" required></div>
             <div class="field"><label for="productWeightKg">წონა (კგ)</label><input id="productWeightKg" name="weightKg" type="number" min="0.001" max="999999999.999" step="0.001" required><small class="muted">ფასიანი მიწოდებისთვის აუცილებელია დადებითი წონა.</small></div>

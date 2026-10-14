@@ -8,7 +8,7 @@
       id: String(product.id),
       name: product.name || "",
       category: product.category || "",
-      category_key: product.categoryKey || null,
+      category_key: window.MovioStore.getCategoryKey(product) || null,
       price: Number(product.price || 0),
       weight_kg: product.weightKg == null ? null : Number(product.weightKg),
       free_delivery: product.freeDelivery === true,
@@ -36,7 +36,7 @@
       id: row.id,
       name: row.name,
       category: row.category,
-      categoryKey: row.category_key || row.category,
+      categoryKey: window.MovioStore.getCategoryKey({ categoryKey: row.category_key, category: row.category }),
       price: Number(row.price || 0),
       weightKg: row.weight_kg == null ? null : Number(row.weight_kg),
       freeDelivery: typeof row.free_delivery === 'boolean' ? row.free_delivery : null,
@@ -46,6 +46,7 @@
       specifications: Array.isArray(row.specifications) ? row.specifications : [],
       image: row.image || "",
       images: Array.isArray(row.images) ? row.images : (row.image ? [row.image] : []),
+      imagesLoaded: Object.prototype.hasOwnProperty.call(row, 'image'),
       active: row.active !== false,
       updatedAt: row.updated_at || null,
       oldPriceVisible: row.old_price_visible !== false,
@@ -60,22 +61,50 @@
   }
 
   let pendingSync;
+  const detailPage = typeof document !== 'undefined' && !!document.querySelector?.('#productDetail');
+  const homePage = typeof document !== 'undefined' && !!document.querySelector?.('[data-managed-products]');
+  const imageMemoryCache = new Map();
+  const imageCachePrefix = `movio-main-image-v1:${typeof SUPABASE_URL === 'string' ? SUPABASE_URL : 'local'}:`;
+  function readMainImage(product) {
+    if (!product?.updatedAt) return null;
+    const key = imageCachePrefix + product.id;
+    let cached = imageMemoryCache.get(key);
+    if (!cached) {
+      try { cached = JSON.parse(sessionStorage.getItem(key)); } catch { /* Optional image cache. */ }
+    }
+    return cached?.revision === product.updatedAt && typeof cached.image === 'string' ? cached : null;
+  }
+  function rememberMainImage(row) {
+    if (!row.updated_at || typeof row.image !== 'string') return;
+    const key = imageCachePrefix + row.id;
+    const cached = {revision:row.updated_at,image:row.image};
+    imageMemoryCache.set(key, cached);
+    try { sessionStorage.setItem(key, JSON.stringify(cached)); } catch { /* Quota/privacy settings never block catalog loading. */ }
+  }
+  const metadataFields = 'id,name,category,category_key,price,weight_kg,free_delivery,old_price,stock,description,specifications,active,updated_at,old_price_visible,discount_visible,discount_percent,stock_quantity_visible,stock_status_visible,stock_status';
+  async function timedRequest(query, timeout = 8000) {
+    const controller = typeof AbortController === 'function' ? new AbortController() : null;
+    if (controller && typeof query.abortSignal === 'function') query = query.abortSignal(controller.signal);
+    let timer;
+    try {
+      return await Promise.race([query, new Promise((_, reject) => {
+        timer = setTimeout(() => { controller?.abort(); reject(new Error('Request timed out')); }, timeout);
+      })]);
+    } finally { clearTimeout(timer); }
+  }
   async function fetchCatalog() {
     window.MovioStore.setCatalog([], "loading");
     try {
       if (!client) throw new Error("Supabase client unavailable");
-      let timer;
-      let result;
-      try {
-        result = await Promise.race([
-          client.from('products').select('*').order('created_at', {ascending:false}),
-          new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Catalog request timed out')), 15000); })
-        ]);
-      } finally { clearTimeout(timer); }
+      const result = await timedRequest(client.from('products').select(detailPage || homePage ? metadataFields : '*').order('created_at', {ascending:false}), detailPage || homePage ? 8000 : 15000);
       const { data, error } = result;
       if (error) throw error;
       if (!Array.isArray(data)) throw new Error("Invalid catalog response");
-      window.MovioStore.setCatalog(data.map(fromDb));
+      window.MovioStore.setCatalog(data.map(row => {
+        const product = fromDb(row);
+        const cached = !product.imagesLoaded && readMainImage(product);
+        return cached ? {...product,image:cached.image,images:cached.image ? [cached.image] : []} : product;
+      }));
     } catch (error) {
       console.error("MOVIO Supabase sync error:", error);
       window.MovioStore.setCatalog([], "error");
@@ -133,6 +162,23 @@
   };
 
   window.MovioStore.syncFromSupabase = syncFromSupabase;
+  const pendingImages = new Map();
+  window.MovioStore.loadProductImageData = function (id, gallery = false) {
+    const product = window.MovioStore.getProducts().find(item => String(item.id) === String(id));
+    if (product?.active === false) return Promise.reject(new Error('Product images unavailable'));
+    const cached = !gallery && readMainImage(product);
+    if (cached) return Promise.resolve({id:String(id),image:cached.image,updated_at:cached.revision});
+    const key = `${id}:${gallery}`;
+    if (!pendingImages.has(key)) pendingImages.set(key, (async () => {
+      if (!client) throw new Error('Image service unavailable');
+      const result = await timedRequest(client.from('products').select(gallery ? 'id,images,active,updated_at' : 'id,image,active,updated_at')
+        .eq('id', String(id)).limit(1), gallery ? 12000 : 8000);
+      if (result.error || !Array.isArray(result.data) || result.data.length !== 1 || result.data[0].active === false) throw new Error('Product images unavailable');
+      if (!gallery) rememberMainImage(result.data[0]);
+      return result.data[0];
+    })().finally(() => pendingImages.delete(key)));
+    return pendingImages.get(key);
+  };
 
   window.MovioStore.catalogReady = syncFromSupabase();
 })();

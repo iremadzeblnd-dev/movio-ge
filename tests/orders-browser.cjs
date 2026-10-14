@@ -333,7 +333,7 @@ async function main() {
   assert.equal(await evaluate(`document.querySelector('#detailCartCount').textContent`),'3');
   await evaluate(`localStorage.setItem('__fixture-catalog-error','1')`);
   await send('Page.navigate',{url:`http://127.0.0.1:${server.address().port}/item.html?item=42`});
-  await wait(`!document.querySelector('#productNotFound').hidden`);
+  await wait(`!!document.querySelector('#productNotFound') && !document.querySelector('#productNotFound').hidden`);
   assert(await evaluate(`document.querySelector('#productDetail').hidden && document.querySelector('#productNotFound h1').textContent.includes('მიუწვდომელია') && !document.querySelector('#productNotFound p').textContent.includes('404')`),'Failed catalog is not a missing product');
   await evaluate(`localStorage.removeItem('__fixture-catalog-error')`);
   console.log('PASS product detail: legacy cart count/add and Georgian catalog failure without stale products');

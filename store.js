@@ -4,6 +4,12 @@
   let memoryState;
   let catalog = [];
   let catalogStatus = "loading";
+  const CATEGORIES = [
+    { key: 'electric-scooters', label: 'ელექტრო სკუტერები', aliases: ['scooters', 'scooter', 'electric scooters'] },
+    { key: 'electric-bikes', label: 'ელექტრო ველოსიპედები', aliases: ['electric bicycles', 'electric bikes', 'e-bikes', 'ebikes'] },
+    { key: 'quad-bikes', label: 'კვადრო ციკლები', aliases: ['quad bikes', 'atv'] },
+    { key: 'car-accessories', label: 'მანქანის აქსესუარები', aliases: ['car accessories', 'accessories'] },
+  ];
 
   function setCatalog(products, status = "ready") {
     catalog = status === "ready" ? clone(products).map(normalizeImages) : [];
@@ -92,12 +98,23 @@
   }
 
   function getCategoryKey(product) {
-    const raw = String(product?.categoryKey || product?.category || '').trim().toLocaleLowerCase('ka-GE');
+    const key = String(product?.categoryKey || '').trim().toLocaleLowerCase('ka-GE');
+    const raw = key || String(product?.category || '').trim().toLocaleLowerCase('ka-GE');
+    const knownCategory = CATEGORIES.find(category => category.key === raw
+      || category.label.toLocaleLowerCase('ka-GE') === raw || category.aliases.includes(raw));
+    if (knownCategory) return knownCategory.key;
+    // Unknown explicit keys remain authoritative; normalize recognized legacy labels only.
+    if (key) return key;
     if (/quad|atv|კვად/.test(raw)) return 'quad-bikes';
     if (/scooter|სკუტ/.test(raw)) return 'electric-scooters';
-    if (raw === 'electric-bikes' || /bicycle|ველო/.test(raw)) return 'electric-bikes';
+    if (/bike|bicycle|ველო/.test(raw)) return 'electric-bikes';
     if (/accessor|აქსესუარ/.test(raw)) return 'car-accessories';
     return raw;
+  }
+
+  function shouldShowOldPrice(product) {
+    const oldPrice = Number(product?.oldPrice);
+    return product?.oldPriceVisible !== false && Number.isFinite(oldPrice) && oldPrice > 0;
   }
 
   function normalizeImages(product) {
@@ -112,6 +129,12 @@
     savedProduct.name = String(savedProduct.name || '').trim();
     savedProduct.price = Number(savedProduct.price);
     savedProduct.stock = Number(savedProduct.stock);
+    const categoryKey = getCategoryKey(savedProduct);
+    if (!CATEGORIES.some(category => category.key === categoryKey)) {
+      throw new Error('აირჩიეთ პროდუქტის კატეგორია სიიდან.');
+    }
+    savedProduct.category = categoryKey;
+    savedProduct.categoryKey = categoryKey;
     if (!savedProduct.id || !savedProduct.name || !Number.isFinite(savedProduct.price) || savedProduct.price <= 0
       || Math.abs(savedProduct.price * 100 - Math.round(savedProduct.price * 100)) > 0.00001
       || !Number.isInteger(savedProduct.stock) || savedProduct.stock < 0) {
@@ -238,6 +261,8 @@
     isLegacyDemoProduct,
     getProducts,
     getCategoryKey,
+    getCategories: () => clone(CATEGORIES),
+    shouldShowOldPrice,
     saveProduct,
     validateProduct,
     getStockLabel,

@@ -14,4 +14,7 @@ for(const [label,expected] of [['ელექტრო სკუტერებ�
   ['კვადრო ციკლები','quad-bikes'],['ATV quad bikes','quad-bikes'],['მანქანის აქსესუარები','car-accessories'],
   ['electric-scooters','electric-scooters'],['Other','other']])assert.equal(key({category:label}),expected);
 assert.equal(key({category:'ელექტრო ველოსიპედები',categoryKey:'electric-scooters'}),'electric-scooters','Explicit key remains authoritative');
+for (const [label, expected] of [['Scooters','electric-scooters'],['Electric Bicycles','electric-bikes'],['Quad Bikes','quad-bikes'],['Car Accessories','car-accessories'],['ელექტრო სკუტერები','electric-scooters']]) {
+ assert.equal(key({categoryKey:label}),expected,'Legacy explicit category name normalizes');
+}
 console.log('PASS runtime guards: missing/failed/successful Supabase SDK and shared Georgian/English category normalization; isolated fixtures only');

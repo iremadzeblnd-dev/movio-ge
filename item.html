@@ -9,20 +9,36 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://iocjpgiarjqpnvqjbhtt.supabase.co" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   <link rel="stylesheet" href="styles.css?v=gallery-20261014">
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 <script src="supabaseClient.js" defer></script>
 <script src="store.js?v=readiness-20261008" defer></script>
-<script src="supabase-sync.js?v=readiness-20261008" defer></script>
-  <script src="product-detail.js?v=gallery-20261014" defer></script>
+<script src="supabase-sync.js?v=home-progress-20261014" defer></script>
+  <script src="product-detail.js?v=detail-performance-20261014" defer></script>
+  <script src="logo-navigation.js?v=navigation-20261014" defer></script>
 </head>
 
 <body class="item-page item-page-ecommerce">
+  <script>
+    // A CDN failure must not leave the page blank before deferred scripts can run.
+    setTimeout(() => {
+      const detail = document.getElementById('productDetail');
+      const error = document.getElementById('productNotFound');
+      if (!detail?.hidden || !error?.hidden) return;
+      error.hidden = false;
+      error.querySelector('h1').textContent = 'პროდუქტის ჩატვირთვა ვერ მოხერხდა';
+      error.querySelector('p').textContent = 'შეამოწმეთ კავშირი და სცადეთ გვერდის განახლება.';
+      const retry = document.createElement('button'); retry.type = 'button'; retry.textContent = 'ხელახლა ცდა';
+      retry.addEventListener('click', () => location.reload()); error.append(retry);
+    }, 12000);
+  </script>
 
   <header class="item-page-header">
-    <a class="wordmark" href="index.html#top">
+    <a class="wordmark" href="index.html">
       <img src="movio-logo-final.svg" alt="MOVIO">
     </a>
 

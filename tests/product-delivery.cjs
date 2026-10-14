@@ -32,7 +32,7 @@ assert.equal(shipping.quote([item(0.0001)],'city').error,'PRODUCT_WEIGHT_REQUIRE
 assert.equal(shipping.quote([{product:{weightKg:1},quantity:1}],'city').error,'PRODUCT_WEIGHT_REQUIRED','Missing free-delivery metadata cannot imply a fee');
 const read=file=>fs.readFileSync(file,'utf8').replace(/^\uFEFF/,'').replace(/\r\n/g,'\n');
 (async()=>{
- const values=new Map();let rows=[{id:'p',name:'Product',price:100,weight_kg:45,free_delivery:false,stock:3,active:true}],upserts=[];
+ const values=new Map();let rows=[{id:'p',name:'Product',category:'electric-scooters',price:100,weight_kg:45,free_delivery:false,stock:3,active:true}],upserts=[];
  let writeFailure=false,writeConflict=false;
  const write=p=>{upserts.push(p);const query={eq:()=>query,select:async()=>writeFailure?{error:{message:'denied'}}:{data:writeConflict?[]:[{id:p.id}]}};return query;};
  const db={from:()=>({select:()=>({order:async()=>({data:rows})}),update:write,insert:write,delete:()=>({eq:async()=>writeFailure?{error:{message:'denied'}}:{}})}),auth:{getSession:async()=>({data:{session:{user:{id:'admin'}}}})}};

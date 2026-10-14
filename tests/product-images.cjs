@@ -17,6 +17,24 @@ const check = async () => {
   await MovioStore.catalogReady;
   if (new URLSearchParams(location.search).has('refresh-check')) return;
   const verify = (ok, label) => { if (!ok) throw Error(label); };
+  const failure = new URLSearchParams(location.search).get('fail');
+  if (failure) {
+    if (failure === 'metadata') {
+      for(let i=0;i<200 && document.querySelector('#productNotFound').hidden;i++) await new Promise(resolve=>setTimeout(resolve,10));
+      verify(!document.querySelector('#productNotFound').hidden && document.querySelector('#productDetail').hidden, 'Metadata timeout replaces loading with an error');
+    } else {
+      for(let i=0;i<200 && document.querySelector('#productDetail').dataset.galleryState!=='error';i++) await new Promise(resolve=>setTimeout(resolve,10));
+      verify(!document.querySelector('#productDetail').hidden && document.querySelector('#detailTitle').textContent, 'Information remains visible while images time out');
+      verify(document.querySelector('#productDetail').dataset.galleryState==='error', 'Image request has bounded timeout: '+JSON.stringify({state:document.querySelector('#productDetail').dataset.galleryState,loaded:MovioStore.getProducts()[0]?.imagesLoaded,timeout:setTimeout.toString()}));
+      if (failure==='gallery') verify(!document.querySelector('#detailImage').hidden,'Main image survives gallery timeout');
+      history.replaceState(null,'','item.html?item=fixture-0');
+      document.querySelector('.detail-product-gallery > p button').click();
+      for(let i=0;i<200 && document.querySelector('#productDetail').dataset.galleryState!=='ready';i++) await new Promise(resolve=>setTimeout(resolve,10));
+      verify(document.querySelectorAll('.product-gallery-thumbnails button').length===3,'Retry restores gallery');
+    }
+    return;
+  }
+  for(let i=0;i<200 && document.querySelector('#productDetail')?.dataset.galleryState==='loading';i++) await new Promise(resolve=>setTimeout(resolve,10));
   const thumbs = [...document.querySelectorAll('.product-gallery-thumbnails button')];
   if (new URLSearchParams(location.search).get('item') === 'fixture-1') {
     verify(thumbs.length === 1 && document.querySelector('.product-gallery-thumbnails').hidden, 'Legacy single image gallery');
@@ -120,12 +138,13 @@ const server = http.createServer((request, response) => {
   if (name === 'admin-auth.js') { response.setHeader('Content-Type', 'text/javascript'); response.end('window.movioAdminAuthorized=true;'); return; }
   if (name === 'supabaseClient.js') {
     response.setHeader('Content-Type', 'text/javascript');
-    response.end(`window.fixtureWrites=[];let fixtureRows=JSON.parse(sessionStorage.getItem('image-fixture-rows')||'null')||${JSON.stringify(rows)};const fixtureWrite=row=>{window.fixtureWrites.push(row);fixtureRows=fixtureRows.filter(product=>product.id!==row.id).concat(row);sessionStorage.setItem('image-fixture-rows',JSON.stringify(fixtureRows));const query={eq:()=>query,select:async()=>({data:[{id:row.id}]})};return query;};window.movioSupabase={from:()=>({select:()=>({order:async()=>({data:structuredClone(fixtureRows)})}),update:fixtureWrite,insert:fixtureWrite}),auth:{getSession:async()=>({data:{session:{user:{id:'fixture-admin'}}}})},rpc:async()=>({data:[]})};`);
+    response.end(`window.fixtureWrites=[];let fixtureRows=JSON.parse(sessionStorage.getItem('image-fixture-rows')||'null')||${JSON.stringify(rows)};const fixtureWrite=row=>{window.fixtureWrites.push(row);fixtureRows=fixtureRows.filter(product=>product.id!==row.id).concat(row);sessionStorage.setItem('image-fixture-rows',JSON.stringify(fixtureRows));const query={eq:()=>query,select:async()=>({data:[{id:row.id}]})};return query;};window.movioSupabase={from:()=>({select:(columns='*')=>{let selected=fixtureRows;const project=row=>columns==='*'?structuredClone(row):Object.fromEntries(columns.split(',').filter(key=>Object.hasOwn(row,key)).map(key=>[key,row[key]]));const q={order:async()=>new URLSearchParams(location.search).get('fail')==='metadata'?new Promise(()=>{}):({data:selected.map(project)}),eq:(key,value)=>{selected=selected.filter(row=>row[key]===value);return q;},limit:async n=>new URLSearchParams(location.search).get('fail')===(columns.split(',').includes('images')?'gallery':'main')?new Promise(()=>{}):({data:selected.slice(0,n).map(project)})};return q;},update:fixtureWrite,insert:fixtureWrite}),auth:{getSession:async()=>({data:{session:{user:{id:'fixture-admin'}}}})},rpc:async()=>({data:[]})};`);
     return;
   }
   try {
     let body = fs.readFileSync(path.join(root, name));
     if (name.endsWith('.html')) body = body.toString().replace(/<script src="https:[^>]*><\/script>/g, '')
+      .replace(/<link\b[^>]*href="https:[^>]*>/g, '')
       .replace('</body>', `<script>addEventListener('load',async()=>{try{await (${(name === 'admin.html' ? checkAdmin : check).toString()})();document.body.dataset.regression='PASS';}catch(error){document.body.dataset.regression=error.message;}});</script></body>`);
     response.setHeader('Content-Type', name.endsWith('.js') ? 'text/javascript' : name.endsWith('.html') ? 'text/html' : 'text/css');
     response.end(body);
@@ -145,8 +164,8 @@ const server = http.createServer((request, response) => {
     console.log(`Read-only saved catalog: ${rows.length} three-image product(s); no mutations`);
   }
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  const pages = savedCatalog ? rows.map(p => `item.html?item=${encodeURIComponent(p.id)}`) : ['item.html?item=fixture-0', 'item.html?item=fixture-1', 'admin.html'];
-  for (const width of [375, 1280]) for (const page of pages) {
+  const pages = savedCatalog ? rows.map(p => `item.html?item=${encodeURIComponent(p.id)}`) : ['item.html?item=fixture-0', 'item.html?item=fixture-1', 'admin.html', ...['metadata','main','gallery'].map(f=>'item.html?item=fixture-0&fail='+f)];
+  for (const width of [375, 1280]) for (const page of pages.filter(p=>!process.argv.includes('--failure-only')||p.includes('fail='))) {
     const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'movio-global-'));
     // Poll real browser time: virtual-time dump-dom can outrun Image.decode().
     const child = spawn(process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', [
@@ -165,6 +184,8 @@ const server = http.createServer((request, response) => {
       let id=0; const pending=new Map();
       ws.addEventListener('message',event=>{ const msg=JSON.parse(event.data); if(!msg.id)return; const task=pending.get(msg.id); pending.delete(msg.id); msg.error?task.reject(msg.error):task.resolve(msg.result); });
       const send=(method,params={})=>new Promise((resolve,reject)=>{const n=++id;pending.set(n,{resolve,reject});ws.send(JSON.stringify({id:n,method,params}));});
+      await send('Page.enable');
+      if(page.includes('fail=')) await send('Page.addScriptToEvaluateOnNewDocument',{source:"const nativeTimer=setTimeout;window.setTimeout=(fn,ms,...args)=>nativeTimer(fn,ms===8000?50:ms===8500?100:ms===12000?150:ms,...args);"});
       await send('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:1,mobile:width<600});
       await send('Page.navigate',{url:`http://127.0.0.1:${server.address().port}/${page}`});
       let result;

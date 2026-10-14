@@ -16,4 +16,23 @@ function walk(dir, prefix = '') { for (const item of fs.readdirSync(dir, {withFi
   if (item.isDirectory()) walk(path.join(dir,item.name), name + '/');
 } }
 walk(path.join(output, 'static'));
+// Check the frontend too: validating only the API can miss stale/missing gallery assets.
+const publicAssets = fs.readdirSync('.').filter(name => /\.(?:html|css|js|svg|png|jpe?g|webp|ico)$/i.test(name)
+  && !/^preview.*\.png$/i.test(name)); // Local screenshots are intentionally excluded by .vercelignore.
+for (const name of publicAssets) {
+  const built = path.join(output, 'static', name);
+  assert(fs.existsSync(built), 'Missing public asset: ' + name);
+  assert(fs.readFileSync(built).equals(fs.readFileSync(name)), 'Stale public asset: ' + name);
+}
+for (const name of publicAssets.filter(name => name.endsWith('.html'))) {
+  const html = fs.readFileSync(name, 'utf8');
+  for (const match of html.matchAll(/(?:src|href)="([^"#]+)"/g)) {
+    const target = match[1];
+    if (/^(?:https?:|data:|tel:|mailto:)/i.test(target)) continue;
+    const relative = decodeURIComponent(target.split(/[?#]/)[0]);
+    if (!relative || relative.startsWith('/api/')) continue;
+    assert(fs.existsSync(path.resolve(output, 'static', relative.replace(/^\//, ''))), `${name}: missing referenced asset ${relative}`);
+  }
+}
+console.log(`PASS frontend packaging: ${publicAssets.length} exact source assets and every local HTML reference, including logo navigation and gallery scripts`);
 console.log('PASS Vercel build output: exact candidate API, Node 24 function, filesystem routing before API 404, no public handler or sensitive/development artifacts; no deployment');

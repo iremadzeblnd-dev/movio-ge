@@ -5599,6 +5599,13 @@ body:not(.cart-page) .quantity-control button:disabled { opacity: 0.4; cursor: n
   outline-offset: 3px;
 }
 
+.product-card-prices {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .compact-product-card .product-price-label {
   margin: 0;
   font-size: 17px;

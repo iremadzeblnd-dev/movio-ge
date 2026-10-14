@@ -3,7 +3,13 @@ async function initializeProductDetail() {
   loadingMessage.setAttribute('role', 'status');
   loadingMessage.textContent = 'პროდუქტები იტვირთება…';
   document.querySelector('main')?.prepend(loadingMessage);
-  await window.MovioStore.catalogReady;
+  let readyTimer;
+  try {
+    await Promise.race([window.MovioStore.catalogReady, new Promise((_, reject) => {
+      readyTimer = setTimeout(() => reject(new Error('Product loading timed out')), 8500);
+    })]);
+  } catch { /* The error panel below replaces the loading message. */ }
+  finally { clearTimeout(readyTimer); }
   loadingMessage.remove();
   if (window.MovioStore.getCatalogStatus() !== 'ready') {
     const unavailable = document.querySelector('#productNotFound');
@@ -11,6 +17,8 @@ async function initializeProductDetail() {
     unavailable.hidden = false;
     unavailable.querySelector('p').textContent = 'პროდუქტების ჩატვირთვა ვერ მოხერხდა. განაახლეთ გვერდი და სცადეთ ხელახლა.';
     unavailable.querySelector('h1').textContent = 'კატალოგი დროებით მიუწვდომელია';
+    const retry = document.createElement('button'); retry.type = 'button'; retry.textContent = 'ხელახლა ცდა';
+    retry.addEventListener('click', () => location.reload()); unavailable.append(retry);
     return;
   }
 ﻿const params = new URLSearchParams(window.location.search);
@@ -74,13 +82,8 @@ if (!product) {
   }
 
   const productName = product.name || "პროდუქტი";
-  const categoryLabels = {
-    "electric-scooters": "ელექტრო სკუტერები",
-    "electric-bikes": "ელექტრო ველოსიპედები",
-    "quad-bikes": "კვადრო ციკლები",
-    "car-accessories": "მანქანის აქსესუარები",
-  };
-  const productCategory = categoryLabels[product.category] || product.category || "—";
+  const categoryLabels = Object.fromEntries(window.MovioStore.getCategories().map(category => [category.key, category.label]));
+  const productCategory = categoryLabels[window.MovioStore.getCategoryKey(product)] || product.category || "—";
 
   title.textContent = productName;
 
@@ -135,9 +138,7 @@ if (!product) {
     stockLabel !== "მარაგშია"
   );
 
-  const showOldPrice =
-    product.oldPriceVisible !== false &&
-    Number(product.oldPrice) > 0;
+  const showOldPrice = window.MovioStore.shouldShowOldPrice(product);
 
   oldPriceRow.hidden = !showOldPrice;
 
@@ -154,12 +155,14 @@ if (!product) {
     quantity.textContent = `${Number(product.stock) || 0} ცალი`;
   }
 
-  const galleryImages = MovioStore.normalizeImages(product).images;
+  let galleryImages = MovioStore.normalizeImages(product).images;
   let selectedImage = Math.max(0, galleryImages.indexOf(product.image));
   const media = image.closest('figure');
+  detail.dataset.galleryState = product.imagesLoaded === false ? 'loading' : 'ready';
   const thumbnails = document.createElement('div'); thumbnails.className = 'product-gallery-thumbnails';
   const controls = document.createElement('div'); controls.className = 'product-gallery-controls';
   const counter = document.createElement('span'); counter.setAttribute('aria-live', 'polite');
+  image.decoding = 'async'; image.fetchPriority = 'high';
   function showImage(index) {
     if (!galleryImages.length) { image.hidden = true; noPhoto.hidden = false; return; }
     selectedImage = (index + galleryImages.length) % galleryImages.length;
@@ -169,12 +172,16 @@ if (!product) {
     [...thumbnails.children].forEach((button, i) => button.setAttribute('aria-pressed', String(i === selectedImage)));
   }
   image.addEventListener('error', () => { image.hidden = true; noPhoto.hidden = false; });
-  galleryImages.forEach((src, index) => {
+  function renderThumbnails() {
+    thumbnails.replaceChildren();
+    galleryImages.forEach((src, index) => {
     const button = document.createElement('button'); button.type = 'button'; button.setAttribute('aria-label', `ფოტო ${index + 1}`);
-    const thumb = document.createElement('img'); thumb.src = src; thumb.alt = ''; thumb.loading = 'lazy';
+    const thumb = document.createElement('img'); thumb.alt = ''; thumb.loading = 'lazy'; thumb.decoding = 'async'; thumb.fetchPriority = 'low'; thumb.src = src;
     thumb.addEventListener('error', () => { thumb.hidden = true; button.textContent = String(index + 1); });
     button.append(thumb); button.addEventListener('click', () => showImage(index)); thumbnails.append(button);
   });
+    controls.hidden = thumbnails.hidden = galleryImages.length < 2;
+  }
   for (const [label, step] of [['წინა ფოტო', -1], ['შემდეგი ფოტო', 1]]) {
     const button = document.createElement('button'); button.type = 'button'; button.textContent = step < 0 ? '←' : '→';
     button.setAttribute('aria-label', label); button.addEventListener('click', () => showImage(selectedImage + step)); controls.append(button);
@@ -183,6 +190,7 @@ if (!product) {
   // Keep controls outside the clipped frame containing the absolute-positioned image.
   controls.hidden = thumbnails.hidden = galleryImages.length < 2;
   media.closest('.detail-product-gallery').append(controls, thumbnails);
+  renderThumbnails();
   let touchStart;
   image.addEventListener('touchstart', event => { const touch = event.touches[0]; touchStart = event.touches.length === 1 ? {x:touch.clientX,y:touch.clientY} : null; }, {passive:true});
   image.addEventListener('touchend', event => {
@@ -193,6 +201,38 @@ if (!product) {
   }, {passive:true});
   image.addEventListener('touchcancel', () => { touchStart = null; });
   showImage(selectedImage);
+  if (product.imagesLoaded === false) {
+    const imageStatus = document.createElement('p'); imageStatus.setAttribute('role', 'status');
+    imageStatus.className = 'detail-cart-message'; imageStatus.textContent = 'ფოტოები იტვირთება…';
+    media.closest('.detail-product-gallery').append(imageStatus);
+    let mainFetched = false;
+    async function hydrateImages() {
+      try {
+        if (!mainFetched) {
+          const main = await MovioStore.loadProductImageData(product.id);
+          product.image = main.image || '';
+          galleryImages = product.image ? [product.image] : [];
+          renderThumbnails(); showImage(0); mainFetched = true;
+        }
+        // Give the main photo a rendering opportunity before requesting the gallery.
+        await new Promise(resolve => setTimeout(resolve, 0));
+        const gallery = await MovioStore.loadProductImageData(product.id, true);
+        galleryImages = MovioStore.normalizeImages({image:product.image, images:Array.isArray(gallery.images) ? gallery.images : galleryImages}).images;
+        product.images = galleryImages; product.imagesLoaded = true;
+        const current = MovioStore.getProducts();
+        MovioStore.setCatalog(current.map(item => String(item.id) === String(product.id) ? {...item,image:product.image,images:galleryImages,imagesLoaded:true} : item));
+        selectedImage = Math.max(0, galleryImages.indexOf(product.image));
+        renderThumbnails(); showImage(selectedImage); imageStatus.remove(); detail.dataset.galleryState = 'ready';
+      } catch {
+        detail.dataset.galleryState = 'error';
+        imageStatus.textContent = 'ფოტოების ჩატვირთვა ვერ მოხერხდა.';
+        const retry = document.createElement('button'); retry.type = 'button'; retry.textContent = 'ხელახლა ცდა';
+        retry.addEventListener('click', () => { detail.dataset.galleryState = 'loading'; imageStatus.replaceChildren(); imageStatus.textContent = 'ფოტოები იტვირთება…'; hydrateImages(); });
+        imageStatus.append(retry);
+      }
+    }
+    hydrateImages();
+  }
 
   const available =
     stockLabel === "მარაგშია" &&
@@ -278,6 +318,14 @@ if (!product) {
     cost.textContent = formatPrice(item.price);
     link.append(media, name, cost);
     relatedGrid.append(link);
+    if (!item.image && item.imagesLoaded === false) {
+      MovioStore.loadProductImageData(item.id).then(row => {
+        if (!row.image) return;
+        const picture = document.createElement('img'); picture.src = row.image; picture.alt = item.name || ''; picture.loading = 'lazy'; picture.decoding = 'async';
+        picture.addEventListener('error', () => { media.textContent = 'ფოტო არ არის'; });
+        media.replaceChildren(picture);
+      }).catch(() => { /* Related content remains useful when an image fails. */ });
+    }
   });
   document.querySelector("#detailRelated").hidden = false;
   document.querySelector("#detailRelatedEmpty").hidden = relatedProducts.length > 0;
