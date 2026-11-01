@@ -125,6 +125,8 @@
     requireAdmin();
     const { data, error } = await client.auth.getSession();
     if (error || !data?.session) throw new Error('Admin session unavailable');
+    const role = await client.rpc('movio_is_admin');
+    if (role.error || role.data !== true) throw new Error('Admin authorization required');
     requireAdmin();
   }
   window.MovioStore.saveProduct = function (product) {

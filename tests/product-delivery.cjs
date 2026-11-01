@@ -1,4 +1,4 @@
-﻿const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const shipping=require('../shipping.js');
 const expected=[[1,6.5,10.5,6,15.5],[5,7.5,12.5,6,17.5],[10,11,16,10,21],[15,16,21,15,26],[20,19,26,20,31],[30,30,36,30,45],[50,45,65,50,80],[100,65,105,80,120],[150,80,145,110,175],[200,100,185,140,215],[250,120,220,170,250],[300,140,260,200,290],[500,220,340,280,390],[750,300,450,370,500],[1000,380,700,510,750]];
 const item=(weight,quantity=1,free=false)=>({product:{weightKg:weight,freeDelivery:free},quantity});
@@ -35,7 +35,7 @@ const read=file=>fs.readFileSync(file,'utf8').replace(/^\uFEFF/,'').replace(/\r\
  const values=new Map();let rows=[{id:'p',name:'Product',category:'electric-scooters',price:100,weight_kg:45,free_delivery:false,stock:3,active:true}],upserts=[];
  let writeFailure=false,writeConflict=false;
  const write=p=>{upserts.push(p);const query={eq:()=>query,select:async()=>writeFailure?{error:{message:'denied'}}:{data:writeConflict?[]:[{id:p.id}]}};return query;};
- const db={from:()=>({select:()=>({order:async()=>({data:rows})}),update:write,insert:write,delete:()=>({eq:async()=>writeFailure?{error:{message:'denied'}}:{}})}),auth:{getSession:async()=>({data:{session:{user:{id:'admin'}}}})}};
+ const db={rpc:async name=>({data:name==='movio_is_admin'?true:[]}),from:()=>({select:()=>({order:async()=>({data:rows})}),update:write,insert:write,delete:()=>({eq:async()=>writeFailure?{error:{message:'denied'}}:{}})}),auth:{getSession:async()=>({data:{session:{user:{id:'admin'}}}})}};
  const sandbox={setTimeout,clearTimeout,window:{movioSupabase:db,movioAdminAuthorized:true,location:{reload:()=>{}}},document:{getElementById:()=>null},localStorage:{getItem:k=>values.get(k)||null,setItem:(k,v)=>values.set(k,v)},console,alert:()=>{}};
  vm.createContext(sandbox);vm.runInContext(read('store.js'),sandbox);vm.runInContext(read('supabase-sync.js'),sandbox);await new Promise(r=>setImmediate(r));
  let product=sandbox.window.MovioStore.getProducts()[0];assert.equal(product.weightKg,45);assert.equal(product.freeDelivery,false);

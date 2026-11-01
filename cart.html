@@ -2,6 +2,7 @@
 <html lang="ka" data-payment-available="false">
   <head>
     <meta charset="UTF-8" />
+  <script src="theme.js?v=20261031-4"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
@@ -15,24 +16,27 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700;800;900&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=cart-checkout-20261005-8" />
+    <link rel="stylesheet" href="styles.css?v=theme-layout-20261031-2" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabaseClient.js" defer></script>
 <script src="store.js?v=readiness-20261008" defer></script>
-<script src="supabase-sync.js?v=home-progress-20261014" defer></script>
+<script src="supabase-sync.js?v=admin-role-20261031-1" defer></script>
 <script src="shipping.js?v=nationwide-free-20261008" defer></script>
-<script src="orders.js?v=readiness-20261008" defer></script>
+<script src="orders.js?v=theme-20261031-1" defer></script>
     <script src="script.js?v=home-progress-20261014" defer></script>
     <link rel="stylesheet" href="customer-account.css?v=prelaunch-20261008-2" />
     <script src="customer-auth.js?v=prelaunch-20261008-2" defer></script>
     <script src="logo-navigation.js?v=navigation-20261014" defer></script>
-  </head>
+    <link rel="stylesheet" href="admin-entry.css?v=20261031-2">
+  <script src="admin-entry.js?v=20261031-1" defer></script>
+  <link rel="stylesheet" href="theme.css?v=20261031-6">
+</head>
   <body class="cart-page cart-horizontal-page">
     <a class="skip-link" href="#top">მთავარ შიგთავსზე გადასვლა</a>
     <div class="page-shell">
       <header class="site-header" aria-label="მთავარი ნავიგაცია">
         <a class="wordmark" href="index.html" aria-label="MOVIO-ს მთავარ გვერდზე დაბრუნება">
-          <img src="movio-logo-final.svg" alt="MOVIO" width="340" height="112" />
+          <img class="movio-brand-image" src="movio-logo-final.svg" alt="MOVIO" width="340" height="112" />
         </a>
         <div class="header-search" id="header-search">
           <form class="search-form" role="search">
@@ -333,7 +337,7 @@
 
       <footer id="footer" tabindex="-1">
         <div class="footer-top">
-          <img class="footer-mark" src="movio-logo-final.svg" alt="MOVIO" width="340" height="112" loading="lazy" decoding="async" />
+          <img class="footer-mark movio-brand-image" src="movio-logo-final.svg" alt="MOVIO" width="340" height="112" loading="lazy" decoding="async" />
           <p>MOVIO — ელექტროტრანსპორტი და მანქანის აქსესუარები.</p>
         </div>
         <nav class="footer-nav" aria-label="ქვედა ნავიგაცია">
@@ -350,7 +354,10 @@
           <a href="terms.html">წესები და პირობები</a>
         </nav>
         <div class="footer-bottom">
-          <span>© 2026 MOVIO. ყველა უფლება დაცულია.</span>
+          <div class="footer-bottom-left">
+            <span>© 2026 MOVIO. ყველა უფლება დაცულია.</span>
+            <button class="footer-admin-entry" type="button" aria-label="Administrator access" aria-haspopup="dialog" aria-controls="storefrontAdminDialog"></button>
+          </div>
         </div>
       </footer>
     </div>

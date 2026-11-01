@@ -29,10 +29,17 @@
       }
     });
     if (widget === undefined) widget = window.turnstile.render('#checkoutVerification', {
-      sitekey: settings.siteKey, action: 'checkout', theme: 'dark', size: 'flexible',
+      sitekey: settings.siteKey, action: 'checkout', theme: typeof document !== 'undefined' && document.documentElement.dataset.theme === 'light' ? 'light' : 'dark', size: 'flexible',
     });
     return settings;
   }
+  // Repaint only the third-party challenge; cart and checkout fields stay intact.
+  window.addEventListener?.('movio:themechange', () => {
+    if (widget === undefined || !window.turnstile?.remove) return;
+    window.turnstile.remove(widget);
+    widget = undefined;
+    prepare().catch(() => { /* Existing checkout errors handle service failures. */ });
+  });
   async function createOrder(input, pending) {
     await prepare();
     const turnstileToken = window.turnstile.getResponse(widget);

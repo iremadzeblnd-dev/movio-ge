@@ -107,7 +107,7 @@ const server = http.createServer((request, response) => {
   if (name === 'admin-auth.js') { response.setHeader('Content-Type', 'text/javascript'); response.end('window.movioAdminAuthorized=true;'); return; }
   if (name === 'supabaseClient.js') {
     response.setHeader('Content-Type', 'text/javascript');
-    response.end(`window.fixtureWrites=[];let fixtureRows=${JSON.stringify(rows)};const fixtureWrite=row=>{window.fixtureWrites.push(row);fixtureRows=fixtureRows.filter(product=>product.id!==row.id).concat(row);const query={eq:()=>query,select:async()=>({data:[{id:row.id}]})};return query;};window.movioSupabase={from:()=>({select:()=>({order:async()=>({data:structuredClone(fixtureRows)})}),update:fixtureWrite,insert:fixtureWrite}),auth:{getSession:async()=>({data:{session:{user:{id:'fixture-admin'}}}})},rpc:async()=>({data:[]})};`);
+    response.end(`window.fixtureWrites=[];let fixtureRows=${JSON.stringify(rows)};const fixtureWrite=row=>{window.fixtureWrites.push(row);fixtureRows=fixtureRows.filter(product=>product.id!==row.id).concat(row);const query={eq:()=>query,select:async()=>({data:[{id:row.id}]})};return query;};window.movioSupabase={from:()=>({select:()=>({order:async()=>({data:structuredClone(fixtureRows)})}),update:fixtureWrite,insert:fixtureWrite}),auth:{getSession:async()=>({data:{session:{user:{id:'fixture-admin'}}}})},rpc:async name=>({data:name==='movio_is_admin'?true:[]})};`);
     return;
   }
   try {

@@ -4487,8 +4487,8 @@ body.cart-page #cart {
 }
 
 
-/* Fix oversized MOVIO logo on category/product pages */
-img[src*="movio-logo-final.svg"]{
+/* Brand geometry is independent of the dark/light SVG filename. */
+img.movio-brand-image{
   width:140px !important;
   max-width:140px !important;
   height:auto !important;
@@ -4946,7 +4946,7 @@ img[src*="movio-logo-final.svg"]{
     max-width: 100%;
   }
 
-  .wordmark img[src*="movio-logo-final.svg"] {
+  .wordmark img.movio-brand-image {
     max-width: 100% !important;
   }
 
@@ -5133,7 +5133,7 @@ img[src*="movio-logo-final.svg"]{
     width: 116px;
   }
 
-  .site-header .wordmark img[src*="movio-logo-final.svg"] {
+  .site-header .wordmark img.movio-brand-image {
     width: 100% !important;
   }
 
@@ -5874,6 +5874,10 @@ body:not(.cart-page) .quantity-control button:disabled { opacity: 0.4; cursor: n
 .storefront-footer .footer-phone { font-size: 15px; font-weight: 700; color: #f1f5ed; }
 .storefront-footer .footer-contact { scroll-margin-top: 100px; }
 .storefront-footer .footer-bottom { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; max-width: 1232px; margin: 0 auto; padding: 18px 24px; border-top: 1px solid rgba(255,255,255,.1); color: #929c8c; font-size: 11px; line-height: 1.7; }
+.footer-bottom-left { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; }
+.footer-admin-link { display: inline-flex; align-items: center; gap: 5px; min-height: 32px; color: #929c8c; font-size: 10px; text-decoration: none; opacity: .72; transition: color .2s ease, opacity .2s ease; }
+.footer-admin-link:hover { color: #c6ff1a; opacity: 1; }
+.footer-admin-link svg { width: 13px; height: 13px; flex: 0 0 13px; }
 .storefront-footer .footer-legal { display: flex; flex-wrap: wrap; gap: 8px 20px; }
 @media (max-width: 1050px) {
   .storefront-footer .movio-footer-inner { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 24px; }
@@ -5890,6 +5894,7 @@ body:not(.cart-page) .quantity-control button:disabled { opacity: 0.4; cursor: n
   .storefront-footer .footer-entry { padding: 6px 0; min-height: 36px; }
   .storefront-footer .footer-contact a { overflow-wrap: anywhere; word-break: break-word; }
   .storefront-footer .footer-bottom { flex-direction: column; align-items: flex-start; gap: 6px; padding: 14px 18px 18px; text-align: left; }
+  .footer-bottom-left { gap: 0 8px; }
   .storefront-footer .footer-legal { gap: 6px 16px; }
 }
 @media (max-width: 360px) {
