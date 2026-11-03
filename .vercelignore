@@ -1,5 +1,6 @@
 tests/
 cloudflare/
+wrangler.toml
 functions/
 dist-cloudflare/
 .wrangler/

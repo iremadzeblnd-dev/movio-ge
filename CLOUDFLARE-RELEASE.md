@@ -2,6 +2,10 @@
 
 Keep the current Supabase project and all records. No new migration is needed for this hosting adapter; accepted production migration checks remain valid. Do not reapply orders/admin/deletion SQL.
 
+The existing Cloudflare project `movio-ge` has now been found through authenticated Wrangler: Git-connected, production branch `main`, hostname `movio-ge.pages.dev`, currently serving old commit `0d22216`. Native config download showed repository-root output and no runtime variables. Four previously missing bindings have been added using only verified public/configuration values: `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `ORDER_ALLOWED_ORIGINS` (the exact Pages origin), and the existing public `TURNSTILE_SITE_KEY`. No privileged value was read or copied. Production checkout still requires the owner to enter `SUPABASE_SERVICE_ROLE_KEY` and the matching `TURNSTILE_SECRET_KEY` privately. The existing Turnstile widget must permit `movio-ge.pages.dev`.
+
+`wrangler.toml` now pins only the verified existing project name, safe output directory and compatibility date. The existing Git build command must be `npm run build:cloudflare`; do not push the auto-deploying branch until the build setting and missing secrets are ready. The older `0d22216` deployment remains unchanged.
+
 The repo contains 42 current frontend assets plus a dedicated safe static-output builder. Existing Node/Vercel API handlers also accept request-scoped runtime bindings. Pages Functions wrap them at `/api/orders` and `/api/customer-account`; unknown API paths return 404. Self-service deletion remains disabled. Existing customer login and Admin authorization remain unchanged.
 
 Before pushing main to an automatically deploying project, verify its existing configuration:

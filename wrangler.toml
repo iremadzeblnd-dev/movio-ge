@@ -1,0 +1,7 @@
+name = "movio-ge"
+pages_build_output_dir = "./dist-cloudflare"
+compatibility_date = "2026-11-03"
+
+# Runtime credentials belong in the existing Pages project's secret bindings.
+# Git build command: npm run build:cloudflare
+# Keep functions/ at repository root, outside the public output directory.
