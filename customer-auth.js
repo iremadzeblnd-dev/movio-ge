@@ -1,6 +1,11 @@
 // Supabase owns credentials and session persistence. Shopping remains optional-auth.
 (() => {
   'use strict';
+  // Legal-retention release gate; the server independently blocks requests.
+  const ACCOUNT_DELETION_ENABLED = false;
+  // Custom SMTP is off. Keep existing password login and valid recovery links;
+  // do not offer new email-dependent signup or recovery-email requests.
+  const EMAIL_AUTH_REQUESTS_ENABLED = false;
   const client = window.movioSupabase;
   let currentUser = null, recovery = false, eventSeen = false, busy = false;
   let recoveryHint = new URLSearchParams(location.search).get('account') === 'recovery' || new URLSearchParams(location.hash.slice(1)).get('type') === 'recovery';
@@ -11,12 +16,18 @@
   const email = value => String(value || '').trim().toLowerCase();
   const prefilled = new Map();
   const observedFields = new WeakSet();
+  let authVersion = 0;
+  let deletedUserId = null;
+  let resolvedNameUserId = null;
+  const promptedUsers = new Set();
+  const nameValue = (...values) => values.find(value => typeof value === 'string' && value.trim() && value.trim().length <= 160)?.trim() || '';
   function profile(user) {
     if (!user?.id) return null;
     const meta = user.user_metadata || {};
-    const full = String(meta.full_name || meta.name || '').trim();
-    const firstName = String(meta.first_name || full.split(/\s+/)[0] || '').trim();
-    const lastName = String(meta.last_name || full.split(/\s+/).slice(1).join(' ') || '').trim();
+    const saved = meta.profile && typeof meta.profile === 'object' ? meta.profile : {};
+    const full = nameValue(meta.full_name, meta.fullName, meta.name, saved.full_name, saved.name);
+    const firstName = nameValue(meta.first_name, meta.firstName, meta.given_name, saved.first_name, saved.firstName) || full.split(/\s+/)[0] || '';
+    const lastName = nameValue(meta.last_name, meta.lastName, meta.family_name, saved.last_name, saved.lastName) || full.split(/\s+/).slice(1).join(' ');
     return { id: user.id, firstName, lastName, name: [firstName, lastName].filter(Boolean).join(' '), email: user.email || '' };
   }
   function auth() {
@@ -61,18 +72,59 @@
       }
     }
   }
-  function updateUser(user) {
+  function updateUser(user, refresh = true) {
+    if (user?.id === deletedUserId) user = null;
+    const version = ++authVersion;
     currentUser = profile(user);
+    resolvedNameUserId = !refresh && currentUser ? currentUser.id : null;
     if (!currentUser) {
       document.getElementById('accountOrdersPanel')?.replaceChildren();
       document.getElementById('accountProfilePanel')?.replaceChildren();
+      if (nameForm && !nameForm.hidden) {
+        nameForm.reset();
+        if (dialog?.open) openAuth('login');
+      }
     }
     renderHeader();
     prefillCheckout();
     window.dispatchEvent(new CustomEvent('movio:customer-auth', { detail: { user: getCurrentUser() } }));
     if (detailsView && !detailsView.hidden) currentUser ? showAccountSection(activeSection) : openAuth('login');
+    // Defer SDK requests until the synchronous Auth event callback has released its lock.
+    if (user?.id) window.setTimeout(async () => {
+      if (version !== authVersion) return;
+      if (refresh && typeof client?.auth?.getUser === 'function') {
+        try {
+          const { data, error } = await client.auth.getUser();
+          if (!error && data?.user?.id === user.id && version === authVersion) updateUser(data.user, false);
+        } catch { /* Keep the session display; don't ask for a name on a failed lookup. */ }
+      } else maybeRequestName();
+    }, 0);
+  }
+  function maybeRequestName() {
+    if (!currentUser || resolvedNameUserId !== currentUser.id || currentUser.firstName || recovery || recoveryHint || busy || !nameForm) return;
+    const key = `movio-name-prompted:${currentUser.id}`;
+    if (promptedUsers.has(currentUser.id)) return;
+    try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, '1'); } catch { /* Memory fallback. */ }
+    promptedUsers.add(currentUser.id);
+    openAuth('name');
+  }
+  async function saveFirstName(value) {
+    const firstName = typeof value === 'string' ? value.trim() : '';
+    if (!firstName || firstName.length > 80 || /[\u0000-\u001f\u007f]/.test(firstName)) throw Error('შეიყვანეთ სახელი (არაუმეტეს 80 სიმბოლო).');
+    const userId = currentUser?.id;
+    if (!userId) throw Error('სახელის შესანახად გაიარეთ ავტორიზაცია.');
+    const { data: verified, error: verifyError } = await auth().getUser();
+    check(verifyError, 'ანგარიშის შემოწმება ვერ მოხერხდა. სცადეთ ხელახლა.');
+    if (verified?.user?.id !== userId || currentUser?.id !== userId) throw Error('სესია შეიცვალა. ხელახლა გაიარეთ ავტორიზაცია.');
+    const lastName = profile(verified.user).lastName;
+    const { data, error } = await auth().updateUser({ data: { first_name: firstName, full_name: [firstName, lastName].filter(Boolean).join(' ') } });
+    check(error, 'სახელის შენახვა ვერ მოხერხდა. სცადეთ ხელახლა.');
+    if (data?.user?.id !== userId || currentUser?.id !== userId) throw Error('სესია შეიცვალა. ხელახლა გაიარეთ ავტორიზაცია.');
+    if (profile(data.user).firstName !== firstName) throw Error('სახელის შენახვა ვერ დადასტურდა. სცადეთ ხელახლა.');
+    updateUser(data.user, false);
   }
   async function register({ firstName, lastName, email: address, password }) {
+    if (!EMAIL_AUTH_REQUESTS_ENABLED) throw Error('ახალი რეგისტრაცია დროებით მიუწვდომელია. შეძენა შეგიძლიათ ანგარიშის გარეშე.');
     firstName = String(firstName || '').trim();
     lastName = String(lastName || '').trim();
     if (!firstName || !lastName || firstName.length > 80 || lastName.length > 80) throw new Error('შეავსეთ სახელი და გვარი.');
@@ -96,7 +148,37 @@
     recovery = recoveryHint = false;
     updateUser(null);
   }
+  async function deleteAccount({password, confirmation}) {
+    if (!ACCOUNT_DELETION_ENABLED) throw Error('ანგარიშის თვითმომსახურებით წაშლა დროებით გამორთულია. მოთხოვნისთვის დაგვიკავშირდით.');
+    const userId = currentUser?.id;
+    if (!userId) throw Error('ანგარიშის წასაშლელად გაიარეთ ავტორიზაცია.');
+    if (confirmation !== 'წაშლა' || typeof password !== 'string' || !password) throw Error('ჩაწერეთ „წაშლა“ და შეიყვანეთ მიმდინარე პაროლი.');
+    const {data, error} = await auth().getSession();
+    check(error, 'სესიის შემოწმება ვერ მოხერხდა. სცადეთ ხელახლა.');
+    if (data.session?.user?.id !== userId || !data.session.access_token || currentUser?.id !== userId) throw Error('სესია შეიცვალა. ხელახლა გაიარეთ ავტორიზაცია.');
+    const response = await fetch('/api/customer-account', {
+      method: 'POST', headers: {'Content-Type':'application/json', Authorization:`Bearer ${data.session.access_token}`},
+      body: JSON.stringify({password, confirmation:'DELETE'}),
+    });
+    const result = await response.json();
+    if (!response.ok || result.deleted !== true) throw Error(result.error || 'ანგარიშის წაშლა ვერ დადასტურდა. სცადეთ ხელახლა ან დაგვიკავშირდით.');
+    deletedUserId = userId;
+    if (currentUser?.id && currentUser.id !== userId) return; // Never sign out a different, newly selected account.
+    try { await auth().signOut({scope:'local'}); } catch { /* Deleted identity may already be rejected by Auth. */ }
+    try {
+      const key = client.auth.storageKey;
+      if (key) { localStorage.removeItem(key); localStorage.removeItem(`${key}-code-verifier`); }
+    } catch { /* Optional browser persistence. */ }
+    try {
+      const pending = JSON.parse(sessionStorage.getItem('movio-pending-checkout') || 'null');
+      if (pending?.userId === userId) sessionStorage.removeItem('movio-pending-checkout');
+      sessionStorage.removeItem(`movio-name-prompted:${userId}`);
+    } catch { /* Leave unreadable/other-user retry state untouched. */ }
+    recovery = recoveryHint = false;
+    updateUser(null);
+  }
   async function requestPasswordReset(address) {
+    if (!EMAIL_AUTH_REQUESTS_ENABLED) throw Error('პაროლის აღდგენის წერილის მოთხოვნა დროებით მიუწვდომელია.');
     const { error } = await auth().resetPasswordForEmail(email(address), { redirectTo: redirect('recovery') });
     check(error, 'ბმულის გაგზავნა ვერ მოხერხდა. სცადეთ ცოტა მოგვიანებით.');
   }
@@ -164,7 +246,7 @@
       retry.textContent = 'ხელახლა ცდა'; retry.onclick = () => showAccountSection('orders'); panel.append(retry);
     }
   }
-  window.MovioCustomerAuth = { getCurrentUser, register, login, logout, requestPasswordReset, changePassword, getOrders, prefillCheckout };
+  window.MovioCustomerAuth = { getCurrentUser, register, login, logout, requestPasswordReset, changePassword, getOrders, prefillCheckout, saveFirstName, deleteAccount };
   const button = document.getElementById('accountButton');
   const label = document.getElementById('accountLabel');
   const menu = document.getElementById('accountMenu');
@@ -175,7 +257,7 @@
   const registerForm = document.getElementById('customerRegisterForm');
   const message = document.getElementById('authMessage');
   const forgot = document.getElementById('forgotPasswordButton');
-  let activeSection = 'profile', resetForm, passwordForm;
+  let activeSection = 'profile', resetForm, passwordForm, nameForm, deleteForm;
   if (authView) {
     const extra = document.createElement('div');
     extra.innerHTML = `<form class="auth-form" id="customerResetForm" hidden>
@@ -185,10 +267,38 @@
       <form class="auth-form" id="customerNewPasswordForm" hidden><p class="customer-auth-hint">შექმენით ახალი პაროლი თქვენი ანგარიშისთვის.</p>
       <label for="newPassword">ახალი პაროლი</label><input id="newPassword" name="password" type="password" autocomplete="new-password" minlength="8" required>
       <label for="newPasswordRepeat">პაროლის გამეორება</label><input id="newPasswordRepeat" name="passwordRepeat" type="password" autocomplete="new-password" minlength="8" required>
-      <button class="auth-submit" type="submit">პაროლის შენახვა</button></form>`;
+      <button class="auth-submit" type="submit">პაროლის შენახვა</button></form>
+      <form class="auth-form" id="customerNameForm" hidden>
+      <p class="customer-auth-hint">თქვენს ანგარიშში სახელი არ არის შენახული. გთხოვთ, ერთხელ მიუთითოთ თქვენი სახელი.</p>
+      <label for="customerFirstName">სახელი</label><input id="customerFirstName" name="firstName" autocomplete="given-name" required maxlength="80">
+      <button class="auth-submit" type="submit">სახელის შენახვა</button><button class="account-back" type="button" id="customerNameLater">მოგვიანებით</button></form>
+      <form class="auth-form" id="customerDeleteForm" hidden>
+      <h3>ანგარიშის წაშლა</h3><p class="customer-auth-hint">წაიშლება თქვენი შესვლის ანგარიში და პროფილი. საჭირო შეკვეთების ჩანაწერები რჩება კანონით დასაშვები ვალდებულებების შესასრულებლად; ანგარიშთან კავშირი მოიხსნება. შეკვეთები არ გაუქმდება. ეს მოქმედება შეუქცევადია.</p>
+      <p class="customer-auth-hint"><a href="privacy.html#privacy-retention" target="_blank" rel="noopener noreferrer">მონაცემების შენახვა და თქვენი უფლებები</a></p>
+      <label for="deletePassword">მიმდინარე პაროლი</label><input id="deletePassword" name="password" type="password" autocomplete="current-password" required maxlength="1024">
+      <label for="deleteConfirmation">დასადასტურებლად ჩაწერეთ „წაშლა“</label><input id="deleteConfirmation" name="confirmation" autocomplete="off" pattern="წაშლა" required>
+      <button class="auth-submit" type="submit">ანგარიშის საბოლოოდ წაშლა</button><button class="account-back" type="button" id="customerDeleteCancel">გაუქმება</button></form>`;
     authView.insertBefore(extra, message);
     resetForm = document.getElementById('customerResetForm');
     passwordForm = document.getElementById('customerNewPasswordForm');
+    nameForm = document.getElementById('customerNameForm');
+    nameForm.addEventListener('submit', event => {
+      event.preventDefault();
+      run(nameForm, async () => { await saveFirstName(new FormData(nameForm).get('firstName')); nameForm.reset(); dialog.close(); });
+    });
+    document.getElementById('customerNameLater').addEventListener('click', () => dialog.close());
+    deleteForm = document.getElementById('customerDeleteForm');
+    document.getElementById('customerDeleteCancel').addEventListener('click', () => { deleteForm.reset(); showAccountSection('profile'); });
+    deleteForm.addEventListener('submit', event => {
+      event.preventDefault();
+      run(deleteForm, async () => {
+        const data = new FormData(deleteForm);
+        await deleteAccount({password:data.get('password'), confirmation:data.get('confirmation')});
+        deleteForm.reset();
+        openAuth('login');
+        message.textContent = 'ანგარიში წაიშალა. აუცილებელი შეკვეთების ჩანაწერები შენარჩუნებულია.';
+      });
+    });
     const tabs = document.createElement('nav');
     tabs.className = 'customer-account-tabs';
     tabs.setAttribute('aria-label', 'ანგარიშის განყოფილებები');
@@ -198,17 +308,19 @@
   function closeMenu() { if (menu) menu.hidden = true; button?.setAttribute('aria-expanded', 'false'); }
   function renderHeader() {
     if (!button) return;
-    label.textContent = currentUser ? currentUser.firstName || 'ანგარიში' : 'შესვლა';
-    button.setAttribute('aria-label', currentUser ? `ანგარიში: ${currentUser.name || currentUser.email}` : 'შესვლა');
+    label.textContent = currentUser?.firstName || 'ანგარიში';
+    button.dataset.authenticated = String(Boolean(currentUser));
+    button.setAttribute('aria-label', currentUser ? `ანგარიში: ${currentUser.name || currentUser.email}` : 'ანგარიში');
     button.setAttribute('aria-haspopup', currentUser ? 'menu' : 'dialog');
-    button.title = currentUser?.name || (currentUser ? 'ანგარიში' : 'შესვლა');
+    button.title = currentUser?.name || 'ანგარიში';
     closeMenu();
   }
   function setMode(mode) {
     if (!authView) return;
-    for (const [name, form] of [['login', loginForm], ['register', registerForm], ['reset', resetForm], ['recovery', passwordForm]]) form.hidden = name !== mode;
-    authView.querySelector('.auth-switch').hidden = mode === 'reset' || mode === 'recovery';
-    forgot.hidden = mode !== 'login';
+    if (!EMAIL_AUTH_REQUESTS_ENABLED && ['register','reset'].includes(mode)) mode = 'login';
+    for (const [name, form] of [['login', loginForm], ['register', registerForm], ['reset', resetForm], ['recovery', passwordForm], ['name', nameForm], ['delete', deleteForm]]) form.hidden = name !== mode;
+    authView.querySelector('.auth-switch').hidden = !EMAIL_AUTH_REQUESTS_ENABLED || ['reset', 'recovery', 'name', 'delete'].includes(mode);
+    forgot.hidden = !EMAIL_AUTH_REQUESTS_ENABLED || mode !== 'login';
     message.textContent = '';
     authView.querySelectorAll('[data-auth-mode]').forEach(control => control.setAttribute('aria-pressed', String(control.dataset.authMode === mode)));
   }
@@ -236,6 +348,16 @@
         list.appendChild(document.createElement('dd')).textContent = value || '—';
       }
       panel.append(list);
+      const userId = currentUser.id;
+      // Presentation only; the server and database independently protect Admin accounts.
+      if (ACCOUNT_DELETION_ENABLED) Promise.resolve().then(() => client.rpc('movio_is_admin')).then(result => {
+        if (result.error || result.data !== false || currentUser?.id !== userId || activeSection !== 'profile' || !list.isConnected) return;
+        const remove = document.createElement('button');
+        remove.type = 'button'; remove.className = 'account-back'; remove.id = 'customerDeleteButton';
+        remove.textContent = 'ანგარიშის წაშლა';
+        remove.addEventListener('click', () => { deleteForm.reset(); openAuth('delete'); });
+        panel.append(remove);
+      }).catch(() => { /* Unknown role: do not offer self-deletion. */ });
     } else {
       renderOrders(panel);
     }
@@ -251,11 +373,13 @@
     finally {
       busy = false; controls.forEach(control => { control.disabled = false; }); form?.removeAttribute('aria-busy');
       form?.querySelectorAll('input[type="password"]').forEach(field => { field.value = ''; });
+      maybeRequestName();
     }
   }
   button?.addEventListener('click', () => {
     if (recovery) return openAuth('recovery');
     if (!currentUser) return openAuth();
+    if (!currentUser.firstName) return openAuth('name');
     menu.hidden = !menu.hidden; button.setAttribute('aria-expanded', String(!menu.hidden));
   });
   authView?.querySelectorAll('[data-auth-mode]').forEach(control => control.addEventListener('click', () => setMode(control.dataset.authMode)));

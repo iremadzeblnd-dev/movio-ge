@@ -1,0 +1,36 @@
+/* Scoped header addition; dropdown overlays content without moving the layout. */
+.site-header.has-category-menu {
+  grid-template-columns: minmax(112px, 166px) auto minmax(0, 1fr) minmax(max-content, 28vw);
+  grid-template-areas: "brand categories search actions";
+  column-gap: clamp(12px, 1.5vw, 24px);
+}
+.header-categories { grid-area: categories; position: relative; min-width: 0; }
+.category-menu-toggle {
+  display: flex; align-items: center; gap: 8px; min-height: 44px;
+  padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--surface); color: var(--paper); font: inherit; font-size: 13px;
+  white-space: nowrap; cursor: pointer;
+}
+.category-menu-toggle > span { font-size: 20px; line-height: 1; }
+.category-menu {
+  position: absolute; top: calc(100% + 10px); left: 0; z-index: 100;
+  width: min(280px, calc(100vw - 40px)); max-height: min(440px, 65dvh);
+  overflow-y: auto; overscroll-behavior: contain; padding: 4px;
+  border: 1px solid var(--line); border-radius: 12px;
+  background: var(--surface); color: var(--paper); box-shadow: 0 12px 32px #0003;
+}
+.category-menu a { display: flex; align-items: center; min-height: 44px; padding: 8px 12px; border-radius: 7px; font-size: 13px; font-weight: 500; line-height: 1.5; color: inherit; text-decoration: none; overflow-wrap: anywhere; transition: background-color 120ms ease; }
+.category-menu a:hover, .category-menu a[aria-current], .category-menu-toggle:hover { background: var(--surface-2); }
+.category-menu a:focus-visible, .category-menu-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+@media (min-width: 761px) and (max-width: 1100px) {
+  .site-header.has-category-menu { grid-template-columns: 112px auto minmax(0, 1fr) max-content; gap: 12px; }
+}
+@media (max-width: 760px) {
+  .site-header.has-category-menu {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: "brand actions" "categories search";
+    gap: 10px 8px;
+  }
+  .has-category-menu .header-search { margin: 0; }
+  .category-menu-toggle { padding-inline: 8px; font-size: 11px; }
+}

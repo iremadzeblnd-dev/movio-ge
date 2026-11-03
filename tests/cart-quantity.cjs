@@ -99,14 +99,15 @@ async function main() {
         if (await evaluate(`typeof cartStore !== 'undefined' && !!document.querySelector('.product-cart') && document.readyState === 'complete'`)) break;
         await new Promise(resolve => setTimeout(resolve, 100));
       }
-      assert(await evaluate(`!document.querySelector('#cart,#checkoutForm,#customerName,.hero,.promise,.faq') && document.querySelectorAll('footer').length===1 && !!document.querySelector('#categories')`));
+      assert(await evaluate(`!document.querySelector('#cart,#checkoutForm,#customerName,.hero,.promise,.faq') && document.querySelectorAll('footer').length===1 && !!document.querySelector('#catalog')`));
       assert.equal(await evaluate(`document.querySelector('.header-cart-link').getAttribute('href')`), 'cart.html');
       await evaluate(`document.querySelector('#site-search').focus()`);
       const query = await evaluate(`window.MovioStore.getProducts()[0].name.slice(0,4)`);
       await send('Input.insertText', { text: query });
       assert(await evaluate(`!document.querySelector('.search-results').hidden && !!document.querySelector('.search-results a')`));
       await evaluate(`document.querySelector('#site-search').value='';document.querySelector('#site-search').dispatchEvent(new Event('input',{bubbles:true}));cartStore.clear();renderCart()`);
-      await click('.transport-category-card[data-category-filter="electric-scooters"]', mobile);
+      await click('.category-menu-toggle', mobile);
+      await click('#headerCategoryMenu [data-category-filter="electric-scooters"]', mobile);
       assert(await evaluate(`!!document.querySelector('.product-cart') && !document.querySelector('.compact-product-card').hidden`));
       await click('.product-cart', mobile);
       for (let i = 0; i < 100; i++) {

@@ -7,9 +7,21 @@ const os = require('node:os');
 const { spawn } = require('node:child_process');
 const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
+const emailRequestsEnabled = !fs.readFileSync(path.join(root,'customer-auth.js'),'utf8').includes('const EMAIL_AUTH_REQUESTS_ENABLED = false;');
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'movio-customer-auth-'));
+const deletionRequests = [];
+let deletionMode = 'fail', deletedFixture = false, adminFixture = false;
 const server = http.createServer((req, res) => {
   const name = new URL(req.url, 'http://localhost').pathname.slice(1) || 'cart.html';
+  if (name === 'api/customer-account') {
+    let raw='';req.on('data',chunk=>raw+=chunk);req.on('end',()=>{
+      const body=JSON.parse(raw);deletionRequests.push({body,authorization:req.headers.authorization});
+      res.setHeader('Content-Type','application/json');
+      if(adminFixture){res.statusCode=403;res.end(JSON.stringify({error:'Admin protected'}));return;}
+      if(deletionMode==='fail'||body.password!=='SafeTest123!'){res.statusCode=503;res.end(JSON.stringify({error:'წაშლა ვერ დადასტურდა'}));return;}
+      deletedFixture=true;res.end(JSON.stringify({deleted:true,orderRecordsRetained:true}));
+    });return;
+  }
   if (name === 'supabaseClient.js') { res.end("window.movioSupabase = window.supabase.createClient('https://auth-test.movio.invalid','test-anon-key');"); return; }
   if (name === 'supabase-sync.js') { res.end('// Isolated test fixture only; production never reads cached catalogs.\nwindow.MovioStore.setCatalog(JSON.parse(localStorage.getItem(\'movio-data-v1\')||\'{"products":[]}\').products);window.MovioStore.catalogReady=Promise.resolve();'); return; }
   try {
@@ -55,6 +67,8 @@ async function main() {
   const jwt = () => [Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url'), Buffer.from(JSON.stringify({ sub: testUser.id, aud: 'authenticated', role: 'authenticated', email: testUser.email, exp: Math.floor(Date.now()/1000)+3600, iat: Math.floor(Date.now()/1000) })).toString('base64url'), 'test-signature'].join('.');
   const session = () => ({ access_token: jwt(), refresh_token: 'test-refresh-token', token_type: 'bearer', expires_in: 3600, user: testUser });
   const calls = [];
+  let immediateSignup = false;
+  let failNameSave = false;
   let interceptFailure;
   ws.addEventListener('message', async event => {
     const msg = JSON.parse(event.data);
@@ -67,13 +81,22 @@ async function main() {
       let response = {}, status = 200;
       if (request.method === 'OPTIONS') status = 204;
       else if (url.pathname === '/rest/v1/orders') response = [];
+      else if (url.pathname === '/rest/v1/rpc/movio_is_admin') response = adminFixture;
       else if (url.pathname.endsWith('/signup')) {
         Object.assign(testUser.user_metadata, body.data);
-        response = testUser; // Email confirmation enabled: user but no session.
+        response = immediateSignup ? session() : testUser;
       } else if (url.pathname.endsWith('/token')) {
-        if (body.password === 'Incorrect123!') { status = 400; response = { error_code: 'invalid_credentials', msg: 'Invalid login credentials' }; }
+        if (deletedFixture || body.password === 'Incorrect123!') { status = 400; response = { error_code: 'invalid_credentials', msg: 'Invalid login credentials' }; }
         else response = session();
-      } else if (url.pathname.endsWith('/user')) response = testUser;
+      } else if (url.pathname.endsWith('/user')) {
+        if (deletedFixture) {status=401;response={msg:'User not found'};}
+        else if (request.method === 'PUT' && body.data && failNameSave) {
+          status = 400; response = {error_code:'unexpected_failure',msg:'Simulated name save failure'};
+        } else {
+          if (request.method === 'PUT' && body.data) Object.assign(testUser.user_metadata, body.data);
+          response = testUser;
+        }
+      }
       else if (url.pathname.endsWith('/logout')) status = 204;
       await send('Fetch.fulfillRequest', { requestId: msg.params.requestId, responseCode: status, responseHeaders: [{ name: 'Content-Type', value: 'application/json' }, { name: 'Access-Control-Allow-Origin', value: '*' }, {name:'Access-Control-Allow-Headers',value:'*'}, {name:'Access-Control-Allow-Methods',value:'GET,POST,PUT,DELETE,OPTIONS'}], body: Buffer.from(status === 204 ? '' : JSON.stringify(response)).toString('base64') });
     } catch (error) { interceptFailure = error; }
@@ -106,6 +129,7 @@ async function main() {
     await evaluate(`window.movioSupabase.auth.signOut({scope:'local'})`);
     await click('#accountButton');
     assert(await evaluate(`document.querySelector('#accountDialog').open`));
+    if (emailRequestsEnabled) {
     await click('[data-auth-mode="register"]');
     assert.deepEqual(await evaluate(`[...document.querySelector('#customerRegisterForm').elements].filter(e=>e.tagName==='INPUT').map(e=>e.name)`), ['firstName','lastName','email','password','passwordRepeat']);
     const bounds = await evaluate(`(()=>{const r=document.querySelector('#accountDialog').getBoundingClientRect();return {left:r.left,right:r.right,height:r.height};})()`);
@@ -120,6 +144,13 @@ async function main() {
     assert.deepEqual(signup.body.data,{first_name:'Test',last_name:'Customer',full_name:'Test Customer'});
     assert.equal(signup.redirect,base+'/index.html?account=confirmed');
     assert.equal(await evaluate(`window.MovioCustomerAuth.getCurrentUser()`),null,'Unconfirmed signup cannot impersonate logged-in user');
+    } else {
+      const before=calls.length;
+      assert(await evaluate(`document.querySelector('.auth-switch').hidden && document.querySelector('#forgotPasswordButton').hidden && document.querySelector('#customerRegisterForm').hidden && !document.querySelector('#customerLoginForm').hidden`),'Only unavailable email features hidden; existing login remains');
+      assert(await evaluate(`MovioCustomerAuth.register({firstName:'Test',lastName:'Customer',email:'customer@example.test',password:'SafeTest123!'}).then(()=>false,()=>true)`));
+      assert(await evaluate(`MovioCustomerAuth.requestPasswordReset('customer@example.test').then(()=>false,()=>true)`));
+      assert.equal(calls.length,before,'Disabled email requests never reach Supabase');
+    }
     await submit('customerLoginForm',{email:'customer@example.test',password:'Incorrect123!'});
     assert(await evaluate(`document.querySelector('#authMessage').textContent.includes('არასწორია')`));
     await login();
@@ -127,6 +158,28 @@ async function main() {
     assert(await evaluate(`!document.querySelector('#accountDialog').open`));
     await send('Page.reload');
     await ready(`document.readyState!=='loading' && document.querySelector('#accountLabel')?.textContent==='Test'`);
+    for (const theme of ['dark', 'light']) {
+      if (await evaluate('document.documentElement.dataset.theme') !== theme) await click('.theme-toggle');
+      const originalMetadata = testUser.user_metadata;
+      const firstName = 'ალექსანდრეგრძელისახელი';
+      testUser.user_metadata = { first_name: firstName, last_name: 'მომხმარებელი' };
+      await evaluate(`MovioCustomerAuth.login({email:'customer@example.test',password:'SafeTest123!'})`);
+      assert.equal(await evaluate(`document.querySelector('#accountLabel').textContent`), firstName, 'Label follows authenticated metadata');
+      const layout = await evaluate(`(()=>{const label=document.querySelector('#accountLabel'),selectors=['.wordmark','.header-search','.header-cart-link','#accountButton','.theme-toggle'];const boxes=selectors.map(s=>{const r=document.querySelector(s).getBoundingClientRect();return [r.left,r.top,r.right,r.bottom]});return {visible:getComputedStyle(label).display!=='none',overflow:document.documentElement.scrollWidth>innerWidth,boxes}})()`);
+      assert(layout.visible && !layout.overflow, JSON.stringify({width,theme,layout}));
+      for(let i=0;i<layout.boxes.length;i++)for(let j=i+1;j<layout.boxes.length;j++){
+        const a=layout.boxes[i],b=layout.boxes[j];
+        assert(a[2]<=b[0]+.1||b[2]<=a[0]+.1||a[3]<=b[1]+.1||b[3]<=a[1]+.1, `Header overlap: ${width}px ${theme}`);
+      }
+      testUser.user_metadata = {full_name:'მარიამ მომხმარებელი'};
+      await evaluate(`MovioCustomerAuth.login({email:'customer@example.test',password:'SafeTest123!'})`);
+      assert.equal(await evaluate(`document.querySelector('#accountLabel').textContent`),'მარიამ','Legacy full-name metadata supplies first name');
+      testUser.user_metadata = {};
+      await evaluate(`MovioCustomerAuth.login({email:'customer@example.test',password:'SafeTest123!'})`);
+      assert.equal(await evaluate(`document.querySelector('#accountLabel').textContent`),'ანგარიში','Missing name uses account fallback');
+      testUser.user_metadata = originalMetadata;
+      await evaluate(`MovioCustomerAuth.login({email:'customer@example.test',password:'SafeTest123!'})`);
+    }
     await click('#accountButton');
     await click('#accountMenu [data-account-action="profile"]');
     assert(await evaluate(`document.querySelector('#accountProfilePanel').textContent.includes('Customer') && document.querySelector('#accountProfilePanel').textContent.includes('customer@example.test')`));
@@ -135,16 +188,19 @@ async function main() {
     assert.equal(await evaluate(`document.querySelector('.customer-orders-empty').textContent`),'შეკვეთები ჯერ არ გაქვთ.');
     assert(!(await evaluate(`document.querySelector('#accountOrdersPanel').textContent`)).includes('PRIVATE-OTHER-ORDER'));
     await click('.customer-account-tabs [data-account-action="logout"]');
-    await ready(`document.querySelector('#accountLabel').textContent==='შესვლა'`);
+    await ready(`document.querySelector('#accountLabel').textContent==='ანგარიში'`);
     await send('Page.reload');
     await ready(`document.readyState!=='loading' && !!document.querySelector('#customerResetForm')`);
     assert.equal(await evaluate(`window.MovioCustomerAuth.getCurrentUser()`),null);
+    assert.equal(await evaluate(`document.querySelector('#accountLabel').textContent`),'ანგარიში','Signed-out label survives refresh');
     await click('#accountButton');
+    if (emailRequestsEnabled) {
     await click('#forgotPasswordButton');
     await submit('customerResetForm',{email:'customer@example.test'});
     const reset=calls.filter(c=>c.path.endsWith('/recover')).at(-1);
     assert.equal(reset.body.email,'customer@example.test');
     assert.equal(reset.redirect,base+'/index.html?account=recovery');
+    }
     await navigate(`index.html?account=recovery#access_token=${jwt()}&refresh_token=test-refresh-token&expires_in=3600&token_type=bearer&type=recovery`);
     await ready(`document.querySelector('#accountDialog').open && !document.querySelector('#customerNewPasswordForm').hidden`);
     await submit('customerNewPasswordForm',{password:'ChangedTest123!',passwordRepeat:'ChangedTest123!'});
@@ -165,8 +221,109 @@ async function main() {
     assert.equal(calls.length,authBefore,'Guest purchase controls require no Auth operation');
     assert.equal(await evaluate(`localStorage.getItem('movio-customer-users-v1')`),null);
     assert.equal(await evaluate(`localStorage.getItem('movio-customer-session-v1')`),null);
-    console.log(`PASS ${width}px: signup fields/metadata/confirmation, mismatch, login errors, login, reload persistence, profile, empty orders, logout, reset email, recovery update, prefill, guest shopping`);
+    console.log(`PASS ${width}px: email-request availability gate, existing login, reload persistence, profile, orders, logout, valid recovery update, prefill, guest shopping`);
   }
+  if (emailRequestsEnabled) {
+  immediateSignup = true;
+  const signupResult = await evaluate(`MovioCustomerAuth.register({firstName:'ნინო',lastName:'მომხმარებელი',email:'customer@example.test',password:'SafeTest123!'})`);
+  assert.equal(signupResult.confirmationRequired, false);
+  assert.equal(await evaluate(`document.querySelector('#accountLabel').textContent`), 'ნინო', 'Session-bearing signup updates the header immediately');
+  await send('Page.reload');
+  await ready(`document.readyState!=='loading' && document.querySelector('#accountLabel')?.textContent==='ნინო'`);
+  await evaluate(`MovioCustomerAuth.logout()`);
+  assert.equal(await evaluate(`document.querySelector('#accountLabel').textContent`), 'ანგარიში');
+  console.log('PASS immediate signup name, refresh persistence, metadata fallback, both themes and long-name responsive layouts');
+  }
+  for (const width of [1280,390,320]) {
+    await send('Emulation.setDeviceMetricsOverride',{width,height:844,deviceScaleFactor:1,mobile:width<600});
+    await navigate();
+    await evaluate(`MovioCustomerAuth.logout().then(()=>sessionStorage.clear())`);
+    testUser.user_metadata = {};
+    await click('#accountButton');
+    await login();
+    await ready(`document.querySelector('#accountDialog').open&&!document.querySelector('#customerNameForm').hidden`);
+    const bounds = await evaluate(`(()=>{const r=document.querySelector('#accountDialog').getBoundingClientRect();return [r.left,r.right,r.height]})()`);
+    assert(bounds[0]>=0&&bounds[1]<=width&&bounds[2]<=844);
+    await click('#customerNameLater');
+    await send('Page.reload');
+    await ready(`document.readyState!=='loading'&&!!document.querySelector('#customerNameForm')&&!!MovioCustomerAuth.getCurrentUser()`);
+    await new Promise(resolve=>setTimeout(resolve,100));
+    assert(await evaluate(`!document.querySelector('#accountDialog').open`),'Dismissed name prompt does not repeat on refresh');
+    await click('#accountButton');
+    await ready(`document.querySelector('#accountDialog').open&&!document.querySelector('#customerNameForm').hidden`);
+    failNameSave = true;
+    await submit('customerNameForm',{firstName:'ანა'});
+    assert(await evaluate(`document.querySelector('#accountDialog').open&&document.querySelector('#authMessage').textContent.includes('შენახვა ვერ მოხერხდა')&&document.querySelector('#accountLabel').textContent==='ანგარიში'`),'Failed save never pretends to save a name');
+    failNameSave = false;
+    await submit('customerNameForm',{firstName:'ანა'});
+    await ready(`document.querySelector('#accountLabel').textContent==='ანა'&&!document.querySelector('#accountDialog').open`);
+    assert.equal(testUser.user_metadata.first_name,'ანა');
+    const save=calls.filter(c=>c.path.endsWith('/user')&&c.method==='PUT'&&c.body.data).at(-1);
+    assert.deepEqual(save.body.data,{first_name:'ანა',full_name:'ანა'},'Only customer name metadata is written');
+    assert(!save.body.app_metadata && !save.body.role && !save.body.password, 'No privilege or credential updates');
+    await send('Page.reload');
+    await ready(`document.readyState!=='loading'&&document.querySelector('#accountLabel')?.textContent==='ანა'`);
+    assert(await evaluate(`!document.querySelector('#accountDialog').open`),'Saved name is not requested again');
+    // The cached session has Ana; the Auth server now has newer legacy metadata.
+    testUser.user_metadata = {firstName:'ლუკა',lastName:'მომხმარებელი'};
+    await send('Page.reload');
+    await ready(`document.readyState!=='loading'&&document.querySelector('#accountLabel')?.textContent==='ლუკა'`);
+    testUser.user_metadata = {profile:{first_name:'თამარი',last_name:'მომხმარებელი'}};
+    await send('Page.reload');
+    await ready(`document.readyState!=='loading'&&document.querySelector('#accountLabel')?.textContent==='თამარი'`);
+    await evaluate(`MovioCustomerAuth.logout()`);
+    const count=calls.length;
+    assert(await evaluate(`MovioCustomerAuth.saveFirstName('სხვა').then(()=>false,()=>true)`),'Signed-out users cannot save a name');
+    assert.equal(calls.length,count,'No metadata request without an authenticated customer');
+    assert.equal(await evaluate(`document.querySelector('#accountLabel').textContent`),'ანგარიში');
+    console.log(`PASS ${width}px: one-time missing-name prompt, retry after failed save, secure metadata write, refresh persistence, stale-session refresh, legacy profile fields, logout`);
+  }
+  for(const width of [1280,390,320])for(const theme of ['dark','light']){
+    await send('Emulation.setDeviceMetricsOverride',{width,height:844,deviceScaleFactor:1,mobile:width<600});
+    deletedFixture=false;adminFixture=false;deletionMode='fail';testUser.user_metadata={first_name:'ნინო',last_name:'მომხმარებელი'};
+    await navigate();await click('#accountButton');await login();
+    if(await evaluate('document.documentElement.dataset.theme')!==theme)await click('.theme-toggle');
+    await click('#accountButton');await click('#accountMenu [data-account-action="profile"]');
+    if (fs.readFileSync(path.join(root,'customer-auth.js'),'utf8').includes('const ACCOUNT_DELETION_ENABLED = false;')) {
+      const count=deletionRequests.length;
+      assert(await evaluate(`!document.querySelector('#customerDeleteButton')`),'Disabled deletion has no profile action');
+      assert(await evaluate(`MovioCustomerAuth.deleteAccount({password:'SafeTest123!',confirmation:'წაშლა'}).then(()=>false,()=>true)`),'Direct client deletion is disabled');
+      assert.equal(deletionRequests.length,count,'Disabled customer deletion sends no request');
+      assert(await evaluate(`!!MovioCustomerAuth.getCurrentUser()`),'Account remains signed in');
+      console.log(`PASS ${width}px ${theme}: deletion disabled, no button/request, account usable`);
+      continue;
+    }
+    await ready(`!!document.querySelector('#customerDeleteButton')`);await click('#customerDeleteButton');
+    const before=deletionRequests.length;
+    await submit('customerDeleteForm',{password:'SafeTest123!',confirmation:'არა'});
+    assert.equal(deletionRequests.length,before,'Typed confirmation is required');
+    await click('#customerDeleteCancel');assert.equal(deletionRequests.length,before,'Cancel sends no deletion request');
+    await ready(`!!document.querySelector('#customerDeleteButton')`);await click('#customerDeleteButton');
+    await submit('customerDeleteForm',{password:'SafeTest123!',confirmation:'წაშლა'});
+    assert(await evaluate(`document.querySelector('#accountDialog').open&&!document.querySelector('#customerDeleteForm').hidden&&!!MovioCustomerAuth.getCurrentUser()`),'Failed delete keeps account usable');
+    assert.equal(await evaluate(`document.querySelector('#deletePassword').value`),'','Password cleared after failure');
+    const layout=await evaluate(`(()=>{const r=document.querySelector('#accountDialog').getBoundingClientRect();return r.left>=0&&r.right<=innerWidth&&r.height<=innerHeight&&document.documentElement.scrollWidth<=innerWidth})()`);
+    assert(layout,'Deletion dialog fits '+width+'px '+theme);
+    await evaluate(`localStorage.setItem('movio-cart',JSON.stringify([{id:'auth-test-product',quantity:1}]));sessionStorage.setItem('movio-pending-checkout',JSON.stringify({userId:MovioCustomerAuth.getCurrentUser().id,input:{customer:{address:'Private'}}}));sessionStorage.setItem('movio-name-prompted:'+MovioCustomerAuth.getCurrentUser().id,'1')`);
+    deletionMode='success';await submit('customerDeleteForm',{password:'SafeTest123!',confirmation:'წაშლა'});
+    assert.equal(await evaluate(`document.querySelector('#accountLabel').textContent`),'ანგარიში');
+    assert.equal(await evaluate(`MovioCustomerAuth.getCurrentUser()`),null);
+    assert.equal(await evaluate(`sessionStorage.getItem('movio-pending-checkout')`),null);
+    assert.equal(await evaluate(`localStorage.getItem('sb-auth-test-auth-token')`),null);
+    assert.equal(await evaluate(`JSON.parse(localStorage.getItem('movio-cart')).length`),1);
+    assert.equal(await evaluate(`document.documentElement.dataset.theme`),theme);
+    assert.deepEqual(deletionRequests.at(-1).body,{password:'SafeTest123!',confirmation:'DELETE'});
+    assert(deletionRequests.at(-1).authorization.startsWith('Bearer '));
+    await send('Page.reload');await ready(`document.readyState!=='loading'&&!!window.MovioCustomerAuth`);
+    assert.equal(await evaluate(`MovioCustomerAuth.getCurrentUser()`),null);
+    assert.equal(await evaluate(`localStorage.getItem('sb-auth-test-auth-token')`),null,'Refresh stays signed out');
+    console.log(`PASS ${width}px ${theme}: deletion confirmation/cancel/failure/success, password cleared, local session/retry cleanup, cart/theme retained, refresh signed out`);
+  }
+  deletedFixture=false;adminFixture=true;deletionMode='success';await navigate();await click('#accountButton');await login();
+  await click('#accountButton');await click('#accountMenu [data-account-action="profile"]');await new Promise(resolve=>setTimeout(resolve,100));
+  assert(await evaluate(`!document.querySelector('#customerDeleteButton')`),'Admin is not offered customer deletion');
+  assert(await evaluate(`MovioCustomerAuth.deleteAccount({password:'SafeTest123!',confirmation:'წაშლა'}).then(()=>false,()=>true)`),'Server rejection cannot be bypassed by frontend calls');
+  assert(await evaluate(`!!MovioCustomerAuth.getCurrentUser()`),'Admin remains signed in');
   assert(!interceptFailure, String(interceptFailure));
   assert.deepEqual(errors,[],'No browser exceptions');
 }

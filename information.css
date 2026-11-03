@@ -3,3 +3,16 @@
 .information-page p{margin:20px 0}
 .information-page a,.information-links a{color:var(--accent)}
 .information-links{display:flex;flex-wrap:wrap;gap:18px;padding:24px}
+.legal-page{overflow-wrap:anywhere}
+.legal-page h2{font-size:clamp(1.1rem,3vw,1.4rem);line-height:1.5;margin:36px 0 16px}
+.legal-page h3{font-size:1rem;margin:24px 0 12px}
+.legal-page section{scroll-margin-top:110px}
+.legal-page li{margin:8px 0}
+.legal-updated{color:var(--muted);font-size:.85rem}
+.legal-contents{display:flex;flex-wrap:wrap;gap:10px 20px;padding-block:16px;border-block:1px solid var(--line)}
+.legal-details{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:12px 20px}
+.legal-details dt{color:var(--muted)}
+.legal-details dd{margin:0;min-width:0}
+.legal-notice,.legal-template{margin:24px 0;padding:18px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2)}
+.legal-notice p:last-child{margin-bottom:0}
+@media(max-width:540px){.legal-details{grid-template-columns:minmax(0,1fr);gap:4px}.legal-details dd{margin-bottom:12px}.legal-page ul,.legal-page ol{padding-inline-start:22px}}

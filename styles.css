@@ -3051,13 +3051,9 @@ body.cart-open main > section:not(#cart) {
 
 body.cart-open #cart {
   min-height: calc(100vh - var(--header-height));
-}body.cart-open footer {
+}body.cart-open:not(.cart-page) footer {
   display: none;
 }body.cart-page main > section:not(#cart) {
-  display: none;
-}
-
-body.cart-page footer {
   display: none;
 }
 
@@ -3067,7 +3063,7 @@ body.cart-page #cart {
 
 .category-destinations {
   border-top: 1px solid var(--line);
-  padding: 72px var(--content-inset) 88px;
+  padding: 24px var(--content-inset) 88px;
   background: var(--ink);
   color: var(--paper);
 }
@@ -3524,7 +3520,8 @@ body.cart-page #cart {
   grid-area: brand;
   width: 100%;
   min-width: 0;
-  padding: 4px 8px 4px 0;
+  padding: 4px 0 4px 8px;
+  translate: 8px 0;
 }
 
 .header-search {
@@ -4407,86 +4404,6 @@ body.cart-page #cart {
     height: 26px;
   }
 }
-/* MOVIO transport category cards */
-.transport-category-row{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:18px;
-  margin:0 0 28px;
-}
-
-.transport-category-card{
-  min-height:210px;
-  padding:18px;
-  border:1px solid rgba(190,255,30,.22);
-  border-radius:18px;
-  background:
-    radial-gradient(circle at 50% 42%, rgba(190,255,30,.16), transparent 42%),
-    #11140f;
-  text-decoration:none;
-  color:#fff;
-  display:flex;
-  flex-direction:column;
-  justify-content:space-between;
-  transition:.22s ease;
-  overflow:hidden;
-}
-
-.transport-category-card:hover{
-  transform:translateY(-4px);
-  border-color:#c6ff1a;
-  box-shadow:0 14px 34px rgba(0,0,0,.28);
-}
-
-.transport-category-icon{
-  height:145px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-
-.transport-category-bottom{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  font-weight:800;
-  font-size:18px;
-}
-
-.transport-category-bottom b{
-  width:42px;
-  height:42px;
-  border-radius:50%;
-  background:#c6ff1a;
-  color:#0b0d09;
-  display:grid;
-  place-items:center;
-  font-size:23px;
-}
-
-@media (max-width:700px){
-  .transport-category-row{
-    grid-template-columns:repeat(3, minmax(150px,1fr));
-    overflow-x:auto;
-    padding-bottom:8px;
-  }
-
-  .transport-category-card{
-    min-height:180px;
-  }
-}
-
-
-.transport-category-icon img{
-  width:100%;
-  height:100%;
-  object-fit:contain;
-  display:block;
-  border-radius:14px;
-}
-
-
 /* Brand geometry is independent of the dark/light SVG filename. */
 img.movio-brand-image{
   width:140px !important;
@@ -4789,44 +4706,6 @@ img.movio-brand-image{
 }
 
 
-.category-destinations{
-  margin-top:-38px !important;
-}
-
-.transport-category-row{
-  transform:translateY(-12px);
-}
-
-@media (max-width:700px){
-  .category-destinations{
-    margin-top:-18px !important;
-  }
-
-  .transport-category-row{
-    transform:translateY(-6px);
-  }
-}
-
-
-.category-destinations{
-  margin-top:-62px !important;
-}
-
-.transport-category-row{
-  transform:translateY(-20px);
-}
-
-@media (max-width:700px){
-  .category-destinations{
-    margin-top:-28px !important;
-  }
-
-  .transport-category-row{
-    transform:translateY(-10px);
-  }
-}
-
-
 /* Admin form spacing cleanup */
 
 .admin-form label,
@@ -4915,25 +4794,6 @@ img.movio-brand-image{
 }
 
 
-/* CATEGORY ACTIVE STATE */
-.transport-category-card{
-  caret-color:transparent !important;
-  outline:none !important;
-  transition:border-color .2s ease, box-shadow .2s ease;
-}
-
-.transport-category-card.category-active{
-  border-color:#c6ff1a !important;
-  box-shadow:0 0 0 1px #c6ff1a inset,
-             0 0 18px rgba(198,255,26,.10);
-}
-
-.transport-category-card:focus,
-.transport-category-card:focus-visible{
-  outline:none !important;
-  caret-color:transparent !important;
-}
-
 /* Mobile layout and touch controls; desktop rules stay unchanged. */
 @media (max-width: 760px) {
   .site-header {
@@ -5002,38 +4862,6 @@ img.movio-brand-image{
     width: 100%;
     min-width: 0;
     max-width: 100%;
-  }
-
-  .transport-category-row {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-    overflow: visible;
-  }
-
-  .transport-category-card {
-    min-width: 0;
-    min-height: 150px;
-    padding: 10px 7px;
-  }
-
-  .transport-category-icon {
-    height: 95px;
-  }
-
-  .transport-category-bottom {
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 6px;
-    font-size: 12px;
-    text-align: center;
-    overflow-wrap: anywhere;
-  }
-
-  .transport-category-bottom b {
-    flex: 0 0 28px;
-    width: 28px;
-    height: 28px;
-    font-size: 18px;
   }
 
   .category-detail h3 {
@@ -5256,41 +5084,6 @@ img.movio-brand-image{
     padding-left: 16px;
   }
 
-  .transport-category-row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
-    padding-bottom: 0;
-    transform: none;
-  }
-
-  .transport-category-card {
-    display: grid;
-    grid-template-columns: 90px minmax(0, 1fr);
-    min-height: 112px;
-    align-items: center;
-    gap: 16px;
-    padding: 10px 14px;
-  }
-
-  .transport-category-icon {
-    width: 90px;
-    height: 90px;
-  }
-
-  .transport-category-bottom {
-    min-width: 0;
-    flex-wrap: nowrap;
-    justify-content: space-between;
-    gap: 10px;
-    font-size: 15px;
-    text-align: left;
-  }
-
-  .transport-category-bottom b {
-    width: 32px;
-    height: 32px;
-    flex-basis: 32px;
-  }
 }
 
 @media (min-width: 360px) and (max-width: 430px) {
@@ -5365,45 +5158,6 @@ img.movio-brand-image{
     padding-top: 8px;
   }
 
-  .transport-category-row {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-    margin-bottom: 14px;
-  }
-
-  .transport-category-card {
-    display: flex;
-    min-height: 114px;
-    flex-direction: column;
-    gap: 4px;
-    padding: 8px 6px;
-  }
-
-  .transport-category-icon {
-    width: 100%;
-    height: 56px;
-  }
-
-  .transport-category-bottom {
-    width: 100%;
-    flex-direction: column;
-    gap: 4px;
-    font-size: 10.5px;
-    line-height: 1.3;
-    text-align: center;
-  }
-
-  .transport-category-bottom > span {
-    min-height: 2.6em;
-    max-width: 100%;
-  }
-
-  .transport-category-bottom b {
-    width: 22px;
-    height: 22px;
-    flex-basis: 22px;
-    font-size: 15px;
-  }
 }
 
 /* Homepage decoration uses the M from the MOVIO wordmark. */
@@ -5859,7 +5613,7 @@ body:not(.cart-page) .quantity-control button:disabled { opacity: 0.4; cursor: n
 
 /* Homepage footer: scoped to preserve other pages. */
 .storefront-footer { margin-top: 48px; background: #0b0e0a; border-top: 1px solid rgba(198,255,26,.22); }
-.storefront-footer .movio-footer-inner { max-width: 1280px; padding: 38px 24px 30px; grid-template-columns: 1.2fr 1.1fr 1fr .9fr 1.3fr; gap: 26px; align-items: start; }
+.storefront-footer .movio-footer-inner { max-width: 1280px; padding: 38px 24px 30px; grid-template-columns: 1.3fr 1fr .9fr 1.3fr; gap: 26px; align-items: start; }
 .storefront-footer .footer-column { min-width: 0; }
 .storefront-footer .footer-column h3 { margin: 0 0 14px; color: #c6ff1a; font-size: 13px; font-weight: 700; line-height: 1.5; }
 .storefront-footer .footer-column a, .storefront-footer .footer-entry { display: block; margin: 0; padding: 5px 0; color: #cbd1c7; font-size: 12px; line-height: 1.65; text-decoration: none; overflow-wrap: anywhere; }
@@ -5869,7 +5623,8 @@ body:not(.cart-page) .quantity-control button:disabled { opacity: 0.4; cursor: n
 .storefront-footer .footer-logo { display: block; width: 135px; height: auto; margin: 0 0 12px; }
 .storefront-footer .footer-column p { margin: 8px 0 0; color: #929c8c; font-size: 12px; line-height: 1.8; }
 .storefront-footer .footer-brand p { max-width: 240px; }
-.storefront-footer .social-link { display: flex; gap: 8px; margin: 0 0 8px !important; color: #cbd1c7 !important; font-size: 12px !important; line-height: 1.65; }
+.storefront-footer .footer-social .social-link { display: flex; gap: 8px; margin: 0 0 8px !important; padding: 0; min-height: 0; color: #cbd1c7 !important; font-size: 12px !important; line-height: 1.65; }
+.storefront-footer .footer-social .social-link:hover { transform: translateX(2px); }
 .storefront-footer .social-icon { width: 22px; height: 22px; flex-basis: 22px; }
 .storefront-footer .footer-phone { font-size: 15px; font-weight: 700; color: #f1f5ed; }
 .storefront-footer .footer-contact { scroll-margin-top: 100px; }
@@ -5887,6 +5642,7 @@ body:not(.cart-page) .quantity-control button:disabled { opacity: 0.4; cursor: n
 @media (max-width: 600px) {
   .storefront-footer { margin-top: 28px; }
   .storefront-footer .movio-footer-inner { grid-template-columns: repeat(2,minmax(0,1fr)); padding: 24px 18px 20px; gap: 20px 16px; }
+  .storefront-footer .footer-contact { grid-column: 1 / -1; }
   .storefront-footer .footer-logo { width: 120px; margin-bottom: 8px; }
   .storefront-footer .footer-column h3 { margin-bottom: 8px; font-size: 12px; }
   .storefront-footer .footer-column a { min-height: 36px; display: flex; align-items: center; padding: 6px 0; }

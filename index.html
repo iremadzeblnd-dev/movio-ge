@@ -19,27 +19,32 @@
       rel="stylesheet"
       media="print" onload="this.media='all'"
     />
-    <link rel="stylesheet" href="styles.css?v=theme-layout-20261031-2" />
+    <link rel="stylesheet" href="styles.css?v=homepage-products-20261102-1" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 <script src="supabaseClient.js" defer></script>
 <script src="store.js?v=readiness-20261008" defer></script>
 <script src="supabase-sync.js?v=admin-role-20261031-1" defer></script>
-    <script src="script.js?v=home-progress-20261014" defer></script>
-    <link rel="stylesheet" href="customer-account.css?v=prelaunch-20261008-2" />
-    <script src="customer-auth.js?v=prelaunch-20261008-2" defer></script>
+    <script src="script.js?v=return-estimate-20261103" defer></script>
+    <link rel="stylesheet" href="customer-account.css?v=customer-name-20261102-1" />
+    <script src="customer-auth.js?v=guest-launch-20261103" defer></script>
     <script src="mobile-storefront.js" defer></script>
     <script src="logo-navigation.js?v=navigation-20261014" defer></script>
     <link rel="stylesheet" href="admin-entry.css?v=20261031-2">
   <script src="admin-entry.js?v=20261031-1" defer></script>
   <link rel="stylesheet" href="theme.css?v=20261031-6">
+  <link rel="stylesheet" href="category-menu.css?v=20261102-1">
 </head>
   <body>
     <a class="skip-link" href="#top">მთავარ შიგთავსზე გადასვლა</a>
     <div class="page-shell">
-      <header class="site-header" aria-label="მთავარი ნავიგაცია">
+      <header class="site-header has-category-menu" aria-label="მთავარი ნავიგაცია">
         <a class="wordmark" href="index.html" aria-label="MOVIO-ს მთავარ გვერდზე დაბრუნება">
           <img class="movio-brand-image" src="movio-logo-final.svg" alt="MOVIO" width="340" height="112" />
         </a>
+        <div class="header-categories">
+          <button class="category-menu-toggle" type="button" aria-expanded="false" aria-controls="headerCategoryMenu"><span aria-hidden="true">☰</span> კატეგორიები</button>
+          <nav class="category-menu" id="headerCategoryMenu" aria-label="პროდუქტის კატეგორიები" hidden></nav>
+        </div>
         <div class="header-search" id="header-search">
           <form class="search-form" role="search">
             <label class="sr-only" for="site-search">პროდუქტის ძიება</label>
@@ -58,7 +63,7 @@
           </a>
           <button class="account-button" id="accountButton" type="button" aria-haspopup="menu" aria-expanded="false">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.8 20c.7-3.2 3.2-5 7.2-5s6.5 1.8 7.2 5"/></svg>
-            <span class="account-label" id="accountLabel">შესვლა</span>
+            <span class="account-label" id="accountLabel">ანგარიში</span>
           </button>
           <div class="account-menu" id="accountMenu" role="menu" hidden>
             <button type="button" role="menuitem" data-account-action="profile">ჩემი პროფილი</button>
@@ -70,7 +75,7 @@
       <dialog class="account-dialog" id="accountDialog" aria-labelledby="accountDialogTitle">
         <div class="account-dialog-heading"><h2 id="accountDialogTitle">MOVIO ანგარიში</h2><button class="account-close" type="button" aria-label="დახურვა">×</button></div>
         <section id="accountAuthView">
-          <div class="auth-switch"><button type="button" data-auth-mode="login" aria-pressed="true">შესვლა</button><button type="button" data-auth-mode="register" aria-pressed="false">რეგისტრაცია</button></div>
+          <div class="auth-switch" hidden><button type="button" data-auth-mode="login" aria-pressed="true">შესვლა</button><button type="button" data-auth-mode="register" aria-pressed="false">რეგისტრაცია</button></div>
           <form class="auth-form" id="customerLoginForm">
             <label for="loginEmail">ელფოსტა</label><input id="loginEmail" name="email" type="email" autocomplete="email" required>
             <label for="loginPassword">პაროლი</label><input id="loginPassword" name="password" type="password" autocomplete="current-password" required>
@@ -84,7 +89,7 @@
             <label for="registerPasswordRepeat">პაროლის გამეორება</label><input id="registerPasswordRepeat" name="passwordRepeat" type="password" autocomplete="new-password" minlength="8" required>
             <button class="auth-submit" type="submit">რეგისტრაცია</button>
           </form>
-          <button class="forgot-password" id="forgotPasswordButton" type="button">პაროლი დაგავიწყდა?</button>
+          <button class="forgot-password" id="forgotPasswordButton" type="button" hidden>პაროლი დაგავიწყდა?</button>
           <p class="auth-message" id="authMessage" role="status" aria-live="polite"></p>
         </section>
         <section id="accountDetailsView" hidden>
@@ -103,8 +108,8 @@
             <p class="hero-intro">
               ელექტროტრანსპორტი და აქსესუარები ქალაქისთვის, გზისთვის და ახალი თავგადასავლებისთვის.
             </p>
-            <a class="primary-action" href="#categories">
-              <span>ნახე კატეგორიები</span>
+            <a class="primary-action" href="#catalog">
+              <span>ნახე პროდუქტები</span>
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M5 12h14M14 7l5 5-5 5" />
               </svg>
@@ -122,35 +127,7 @@
 
         </section>
 
-        <section class="category-destinations" id="catalog" tabindex="-1" aria-labelledby="catalog-title">
-          <div class="transport-category-row" id="categories" tabindex="-1">
-
-            <a class="transport-category-card" href="#catalog" data-category-filter="electric-scooters">
-              <div class="transport-category-icon transport-scooter-icon"><img src="movio-scooter-icon.png" alt="სკუტერები"></div>
-              <div class="transport-category-bottom">
-                <span>სკუტერები</span>
-                <b>→</b>
-              </div>
-            </a>
-
-            <a class="transport-category-card" href="#catalog" data-category-filter="electric-bikes">
-              <div class="transport-category-icon transport-bike-icon"><img src="movio-ebike-icon.png" alt="ელექტრო ველოსიპედები"></div>
-              <div class="transport-category-bottom">
-                <span>ველოსიპედები</span>
-                <b>→</b>
-              </div>
-            </a>
-
-            <a class="transport-category-card" href="#catalog" data-category-filter="quad-bikes">
-              <div class="transport-category-icon transport-quad-icon"><img src="movio-quad-icon.png" alt="კვადროები"></div>
-              <div class="transport-category-bottom">
-                <span>კვადროები</span>
-                <b>→</b>
-              </div>
-            </a>
-
-          </div>
-
+        <section class="category-destinations" id="catalog" tabindex="-1" aria-label="პროდუქტები">
           <div class="catalog-filter-state" id="catalogFilterState" hidden>
             <span id="activeCategoryLabel"></span>
             <button id="clearCategoryFilter" type="button">ყველა პროდუქტი <span aria-hidden="true">×</span></button>
@@ -171,14 +148,6 @@
         <a class="footer-brand-link" href="index.html" aria-label="MOVIO მთავარი გვერდი"><img src="movio-logo-final.svg" alt="MOVIO" class="footer-logo movio-brand-image" width="135" height="45" loading="lazy" /></a>
         <p>ელექტროტრანსპორტი და აქსესუარები შენი ყოველდღიური მოძრაობისთვის.</p>
       </div>
-      <nav class="footer-column" aria-labelledby="footer-categories-title">
-        <h3 id="footer-categories-title">კატეგორიები</h3>
-        <a href="#catalog" data-category-filter="electric-scooters">ელექტრო სკუტერები</a>
-        <a href="#catalog" data-category-filter="electric-bikes">ელექტრო ველოსიპედები</a>
-        <a href="#catalog" data-category-filter="quad-bikes">კვადრო ციკლები</a>
-        <a href="#catalog" data-category-filter="car-accessories">მანქანის აქსესუარები</a>
-        <a href="#catalog" data-category-filter="">ყველა პროდუქტი</a>
-      </nav>
       <div class="footer-column footer-help">
         <h3>დახმარება</h3>
         <a href="delivery.html">მიწოდება</a>
@@ -188,32 +157,32 @@
       </div>
       <div class="footer-column footer-social">
         <h3>სოციალური ქსელები</h3>
-        <span class="social-link">
+        <a class="social-link" href="https://www.facebook.com/share/1E4idFDBiR/?mibextid=wwXIfr" target="_blank" rel="noopener noreferrer">
   <span class="social-icon">
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M14 8h3V4.5c-.5-.1-2-.2-3.8-.2-3.7 0-6.2 2.3-6.2 6.4V14H3v4h4v6h5v-6h4l.7-4H12v-3c0-1.2.3-2 2-2z"/>
     </svg>
   </span>
   <span>Facebook</span>
-</span>
+</a>
 
-<span class="social-link">
+<a class="social-link" href="https://www.instagram.com/online_store_gisa?rpxt=MWxvaHEwNHd5OWQycw==" target="_blank" rel="noopener noreferrer">
   <span class="social-icon">
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7zm5 3.8A4.2 4.2 0 1 1 7.8 12 4.2 4.2 0 0 1 12 7.8zm0 2A2.2 2.2 0 1 0 14.2 12 2.2 2.2 0 0 0 12 9.8zm5.4-3.3a1 1 0 1 1-1 1 1 1 0 0 1 1-1z"/>
     </svg>
   </span>
   <span>Instagram</span>
-</span>
+</a>
 
-<span class="social-link">
+<a class="social-link" href="https://www.tiktok.com/@gisa_georgia?_r=1&amp;_t=ZS-9B4Q52UEnSP" target="_blank" rel="noopener noreferrer">
   <span class="social-icon">
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M15.5 3c.5 2.5 2 4 4.5 4.5v4a10 10 0 0 1-4.5-1.2v6.1A6.6 6.6 0 1 1 9.8 9.9v4a2.7 2.7 0 1 0 1.7 2.5V3h4z"/>
     </svg>
   </span>
   <span>TikTok</span>
-</span>
+</a>
       </div>
       <div class="footer-column footer-contact" id="footer-contact">
         <h3>დაგვიკავშირდი</h3>

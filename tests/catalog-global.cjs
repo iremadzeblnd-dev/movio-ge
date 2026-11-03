@@ -19,11 +19,12 @@ const check = async () => {
   const categories = [...new Set(productsByCategory.map(product => MovioStore.getCategoryKey(product)))];
   verify(cards().length === productsByCategory.length, 'All categories render');
   verify(cards().every(card => !card.hidden), 'Default view displays all active products');
-  const categoryCards = [...document.querySelectorAll('.transport-category-card[data-category-filter]')];
-  verify(categoryCards.length === 3, 'Existing three category cards remain');
+  verify(!document.querySelector('.transport-category-card'), 'Homepage category tiles removed');
+  const categoryCards = [...document.querySelectorAll('#headerCategoryMenu [data-category-filter]')].filter(link => link.dataset.categoryFilter);
+  verify(categoryCards.length === categories.length, 'Dropdown lists every product category');
   for (const link of categoryCards) {
     link.click();
-    verify(cards().filter(card => !card.hidden).length === productsByCategory.filter(product => MovioStore.getCategoryKey(product) === link.dataset.categoryFilter).length, 'Click category card filters assigned products');
+    verify(cards().filter(card => !card.hidden).length === productsByCategory.filter(product => MovioStore.getCategoryKey(product) === link.dataset.categoryFilter).length, 'Dropdown category filters assigned products');
     verify(cards().filter(card => !card.hidden).every(card => card.dataset.productCategory === link.dataset.categoryFilter), 'Category click excludes other products');
   }
   document.querySelector('[data-category-filter=""]').click();

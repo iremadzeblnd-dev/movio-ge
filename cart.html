@@ -16,16 +16,16 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700;800;900&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=theme-layout-20261031-2" />
+    <link rel="stylesheet" href="styles.css?v=checkout-info-20261102-1" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabaseClient.js" defer></script>
 <script src="store.js?v=readiness-20261008" defer></script>
 <script src="supabase-sync.js?v=admin-role-20261031-1" defer></script>
-<script src="shipping.js?v=nationwide-free-20261008" defer></script>
+<script src="shipping.js?v=return-estimate-20261103" defer></script>
 <script src="orders.js?v=theme-20261031-1" defer></script>
-    <script src="script.js?v=home-progress-20261014" defer></script>
-    <link rel="stylesheet" href="customer-account.css?v=prelaunch-20261008-2" />
-    <script src="customer-auth.js?v=prelaunch-20261008-2" defer></script>
+    <script src="script.js?v=return-estimate-20261103" defer></script>
+    <link rel="stylesheet" href="customer-account.css?v=compact-checkout-20261102-1" />
+    <script src="customer-auth.js?v=guest-launch-20261103" defer></script>
     <script src="logo-navigation.js?v=navigation-20261014" defer></script>
     <link rel="stylesheet" href="admin-entry.css?v=20261031-2">
   <script src="admin-entry.js?v=20261031-1" defer></script>
@@ -56,7 +56,7 @@
           </a>
           <button class="account-button" id="accountButton" type="button" aria-haspopup="menu" aria-expanded="false">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.8 20c.7-3.2 3.2-5 7.2-5s6.5 1.8 7.2 5"/></svg>
-            <span class="account-label" id="accountLabel">შესვლა</span>
+            <span class="account-label" id="accountLabel">ანგარიში</span>
           </button>
           <div class="account-menu" id="accountMenu" role="menu" hidden>
             <button type="button" role="menuitem" data-account-action="profile">ჩემი პროფილი</button>
@@ -68,7 +68,7 @@
       <dialog class="account-dialog" id="accountDialog" aria-labelledby="accountDialogTitle">
         <div class="account-dialog-heading"><h2 id="accountDialogTitle">MOVIO ანგარიში</h2><button class="account-close" type="button" aria-label="დახურვა">×</button></div>
         <section id="accountAuthView">
-          <div class="auth-switch"><button type="button" data-auth-mode="login" aria-pressed="true">შესვლა</button><button type="button" data-auth-mode="register" aria-pressed="false">რეგისტრაცია</button></div>
+          <div class="auth-switch" hidden><button type="button" data-auth-mode="login" aria-pressed="true">შესვლა</button><button type="button" data-auth-mode="register" aria-pressed="false">რეგისტრაცია</button></div>
           <form class="auth-form" id="customerLoginForm">
             <label for="loginEmail">ელფოსტა</label><input id="loginEmail" name="email" type="email" autocomplete="email" required>
             <label for="loginPassword">პაროლი</label><input id="loginPassword" name="password" type="password" autocomplete="current-password" required>
@@ -82,7 +82,7 @@
             <label for="registerPasswordRepeat">პაროლის გამეორება</label><input id="registerPasswordRepeat" name="passwordRepeat" type="password" autocomplete="new-password" minlength="8" required>
             <button class="auth-submit" type="submit">რეგისტრაცია</button>
           </form>
-          <button class="forgot-password" id="forgotPasswordButton" type="button">პაროლი დაგავიწყდა?</button>
+          <button class="forgot-password" id="forgotPasswordButton" type="button" hidden>პაროლი დაგავიწყდა?</button>
           <p class="auth-message" id="authMessage" role="status" aria-live="polite"></p>
         </section>
         <section id="accountDetailsView" hidden>
@@ -256,9 +256,9 @@
                 <span>სულ გადასახდელი</span>
                 <strong data-cart-total>ინფორმაცია ჯერ არ არის მოწოდებული</strong>
               </div>
+              <p class="summary-note" id="returnShippingEstimate" aria-live="polite" hidden></p>
               <button class="checkout-submit desktop-cart-checkout" id="desktopCartCheckout" type="button" aria-controls="checkoutForm" aria-expanded="false" disabled>გადახდა</button>
               <form class="checkout-form" id="checkoutForm" hidden>
-                <p id="checkoutDelivery" role="status"></p>
                 <label for="customerName">სახელი და გვარი</label>
                 <input id="customerName" name="name" autocomplete="name" maxlength="161" required />
                 <label for="customerEmail">ელფოსტა (არასავალდებულო)</label>
@@ -273,12 +273,15 @@
                 <select id="paymentMethod" name="paymentMethod" required>
                   <option value="cash_on_delivery">მიღებისას ნაღდი ანგარიშსწორება</option>
                 </select>
+                <p class="checkout-info checkout-delivery-fee" id="checkoutDelivery" role="status"></p>
+                <p class="checkout-info">მიწოდება: 2–5 სამუშაო დღე შეკვეთის დადასტურებიდან.</p>
+                <div class="checkout-final-total"><span>სულ გადასახდელი<br><small>მიწოდების ჩათვლით</small></span><strong id="checkoutTotal" aria-live="polite">—</strong></div>
+                <nav class="checkout-info checkout-policy-links" aria-label="შეკვეთის პირობები"><a href="terms.html" target="_blank" rel="noopener noreferrer">წესები და პირობები</a><a href="returns.html" target="_blank" rel="noopener noreferrer">დაბრუნება და გარანტია</a></nav>
                 <div id="checkoutVerification"></div>
-                <button class="checkout-submit" type="submit">შეკვეთის დადასტურება</button>
+                <button class="checkout-submit" type="submit">შეკვეთა — გადახდა მიღებისას</button>
               </form>
               <p class="checkout-message" id="checkoutMessage" role="status" aria-live="polite"></p>
               <div class="summary-row"><span>საერთო წონა</span><span id="cartWeight">—</span></div>
-              <p class="summary-note">გადახდა — მიღებისას ნაღდი ანგარიშსწორებით. მიწოდება გამოითვლება საერთო წონითა და არჩეული მიწოდების ტიპით.</p>
               <p class="summary-note" id="deliveryNotice" role="status" hidden></p>
             </aside>
           </div>

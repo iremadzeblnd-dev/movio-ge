@@ -1,7 +1,7 @@
 // Static packaging/security checks only. No provider requests or SQL execution.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const required = ['api/orders.js','orders.js','shipping.js','store.js','supabaseClient.js',
+const required = ['api/orders.js','api/customer-account.js','orders.js','shipping.js','store.js','supabaseClient.js',
   'supabase-sync.js','script.js','admin-auth.js','admin.js','customer-auth.js',
   'index.html','cart.html','admin.html','vercel.json','.vercelignore'];
 for (const file of required) assert(fs.existsSync(file), `Missing deployment file: ${file}`);

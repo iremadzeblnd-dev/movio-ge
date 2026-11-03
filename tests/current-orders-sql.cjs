@@ -25,7 +25,7 @@ const { PGlite } = require(process.env.MOVIO_PGLITE_PATH || path.join(os.tmpdir(
         ('paid','Paid delivery',null,10,10,'მარაგშია',true,now()),
         ('inactive','Removed',null,20,4,'მარაგშია',false,now());`);
     for (const file of ['supabase-orders.sql','supabase-product-delivery.sql','supabase-weight-shipping-orders.sql',
-      'supabase-admin-security.sql','supabase-admin-orders.sql','supabase-nationwide-free-shipping.sql']) {
+      'supabase-admin-security.sql','supabase-admin-orders.sql','supabase-nationwide-free-shipping.sql','supabase-customer-account-deletion.sql']) {
       await db.exec(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''));
     }
     await db.exec(`insert into movio_private.admin_users(user_id) values ('${admin}');
@@ -94,6 +94,13 @@ const { PGlite } = require(process.env.MOVIO_PGLITE_PATH || path.join(os.tmpdir(
     assert.equal(serviceRetry.id,guest.id,'Actual service role can recover the same receipt after deactivation');
     await db.exec('reset role');
     assert.equal((await db.query("select stock from products where id='free'")).rows[0].stock,before+1,'Receipt recovery never reserves stock again');
+    await assert.rejects(() => db.query('delete from auth.users where id=$1',[admin]), /ADMIN_ACCOUNT_PROTECTED/);
+    await db.query('delete from auth.users where id=$1',[buyer]);
+    const retained=(await db.query('select user_id,total,order_status,request_payload from orders where id=$1',[own.id])).rows[0];
+    assert.equal(retained.user_id,null);assert.equal(Number(retained.total),2319.5);assert.equal(retained.order_status,'cancelled');
+    assert.deepEqual(retained.request_payload,{account_deleted:true});
+    assert.equal((await db.query('select count(*)::int n from order_items')).rows[0].n,3);
+    assert.equal((await db.query("select stock from products where id='free'")).rows[0].stock,before+1,'Account deletion does not change stock');
     console.log('PASS current migration chain in isolated PostgreSQL: guest/Auth persistence, server totals, nationwide free/mixed shipping, retries, rollback, deleted products, customer RLS, Admin authorization/cancellation and exactly-once restocking. Production and multi-connection concurrency NOT tested.');
   } finally { await db.close(); }
 })().catch(error => { console.error(error); process.exitCode=1; });

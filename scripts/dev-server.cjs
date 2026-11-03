@@ -6,6 +6,7 @@ const path = require('node:path');
 const { randomUUID } = require('node:crypto');
 const handler = require('../api/orders.js');
 const shipping = require('../shipping.js');
+const rootId = require('node:crypto').createHash('sha256').update(path.resolve(__dirname, '..').toLowerCase()).digest('hex');
 function createServer({offline = false} = {}) {
   const root = path.resolve(__dirname,'..');
   const products = {
@@ -44,6 +45,16 @@ function createServer({offline = false} = {}) {
   }
   const server=http.createServer(async(req,res)=>{
     const pathname=new URL(req.url,'http://127.0.0.1').pathname;
+    if (pathname === '/__movio/health' && req.method === 'GET') {
+      res.writeHead(200, {'Content-Type': 'application/json', 'Cache-Control': 'no-store'});
+      res.end(JSON.stringify({service: 'movio-local', rootId, pid: process.pid, offline}));
+      return;
+    }
+    if (pathname === '/api/customer-account') {
+      res.writeHead(503, {'Content-Type':'application/json; charset=utf-8', 'Cache-Control':'no-store'});
+      res.end(JSON.stringify({error:'ანგარიშის წაშლა ამ ადგილობრივ გადახედვაში გამორთულია. რეალური ანგარიშები არ იცვლება.'}));
+      return;
+    }
     if(pathname==='/api/orders'){
       if (!offline) {res.writeHead(503, {'Content-Type':'application/json'});res.end(JSON.stringify({error:'Local catalog preview: checkout disabled'}));return;}
       let raw='';
@@ -81,10 +92,22 @@ function createServer({offline = false} = {}) {
   server.on('listening',()=>{process.env.ORDER_ALLOWED_ORIGINS=`http://127.0.0.1:${server.address().port}`;});
   return {server,products,receipts};
 }
-module.exports={createServer};
+module.exports={createServer,rootId};
 if(require.main===module){
   const offline = process.argv.includes('--offline');
-  const {server}=createServer({offline});server.listen(Number(process.env.PORT||4173),'127.0.0.1',()=>{
+  const port = Number(process.env.PORT || 4173);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    console.error('Invalid PORT: use an integer between 1 and 65535.');
+    process.exit(1);
+  }
+  const {server}=createServer({offline});
+  server.on('error', error => {
+    console.error(error.code === 'EADDRINUSE'
+      ? `Port ${port} is already in use. Run node scripts/start-local.cjs to check the existing preview; no process was stopped.`
+      : `Local server failed: ${error.message}`);
+    process.exitCode = 1;
+  });
+  server.listen(port,'127.0.0.1',()=>{
     console.log(`${offline ? 'OFFLINE MOCK ONLY' : 'LIVE SUPABASE CATALOG (local checkout disabled)'}: http://127.0.0.1:${server.address().port}`);
   });
 }

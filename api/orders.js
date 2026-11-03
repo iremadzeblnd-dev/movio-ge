@@ -17,10 +17,10 @@ function reportTurnstileFailure(reason, result, status) {
 async function request(url, options = {}) {
   return fetch(url, { ...options, signal: AbortSignal.timeout(8000) });
 }
-module.exports = async function handler(req, res) {
+module.exports = async function handler(req, res, runtimeEnv = process.env) {
   res.setHeader('Cache-Control', 'no-store');
   const reply = (status, error) => res.status(status).json({ error });
-  const env = process.env;
+  const env = runtimeEnv;
   const origins = (env.ORDER_ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
   const configured = env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY && env.SUPABASE_PUBLISHABLE_KEY
     && env.TURNSTILE_SECRET_KEY && env.TURNSTILE_SITE_KEY && origins.length;
@@ -29,10 +29,10 @@ module.exports = async function handler(req, res) {
     deliveryRule: 'weight_tariff_v1', payment: paymentPolicy });
   if (req.method !== 'POST') { res.setHeader('Allow', 'GET, POST'); return reply(405, message); }
   if (!origins.includes(req.headers.origin)) return reply(403, message);
-  if (!String(req.headers['content-type'] || '').startsWith('application/json')) return reply(415, message);
+  if (String(req.headers['content-type'] || '').split(';', 1)[0].trim().toLowerCase() !== 'application/json') return reply(415, message);
   try {
     const raw = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
-    if (!raw || Buffer.byteLength(raw) > 20000) return reply(413, message);
+    if (!raw || new TextEncoder().encode(raw).byteLength > 20000) return reply(413, message);
     let body;
     try { body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body; }
     catch { throw new InvalidCheckout(); } // Only malformed client JSON is a definitive rejection.

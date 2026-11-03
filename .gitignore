@@ -1,4 +1,8 @@
 .vercel
+.wrangler/
+.dev.vars
+.dev.vars.*
+dist-cloudflare/
 .env
 .env.*
 !.env.example

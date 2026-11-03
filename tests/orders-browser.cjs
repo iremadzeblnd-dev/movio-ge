@@ -82,7 +82,7 @@ async function main() {
   await send('Page.navigate', { url: homepage ? 'http://127.0.0.1:5500/index.html' : live ? 'http://127.0.0.1:5500/cart.html' : `http://127.0.0.1:${server.address().port}/cart.html` });
   async function ready() {
     for (let i = 0; i < (live ? 500 : 100); i++) {
-      if (await evaluate(`typeof cartStore !== 'undefined' && document.readyState !== 'loading'`)) return;
+      if (await evaluate(`typeof cartStore !== 'undefined' && document.readyState === 'complete'`)) return;
       await new Promise(resolve => setTimeout(resolve, 30));
     }
     throw new Error(`Page did not initialize: ${JSON.stringify({errors, page: await evaluate("({url:location.href,state:document.readyState,cart:typeof cartStore,scripts:[...document.scripts].map(s=>s.src)})")})}`);
@@ -92,7 +92,7 @@ async function main() {
     await evaluate(`window.__quantityTestReload = true`);
     await send('Page.reload');
     for (let i = 0; i < 100; i++) {
-      if (await evaluate(`!window.__quantityTestReload && typeof cartStore !== 'undefined' && document.readyState !== 'loading'`)) return;
+      if (await evaluate(`!window.__quantityTestReload && typeof cartStore !== 'undefined' && document.readyState === 'complete'`)) return;
       await new Promise(resolve => setTimeout(resolve, 30));
     }
     throw new Error('Cart did not reload');
@@ -118,7 +118,7 @@ async function main() {
     assert.equal(await evaluate(`document.querySelector('#desktopCartCheckout').disabled`),false,'Delivery validation must allow a click to explain the block');
     await click(currentCheckoutWidth < 600 ? '#mobileCartCheckout' : '#desktopCartCheckout');
     if (!free) {
-      assert(await evaluate(`document.querySelector('#checkoutForm').hidden && document.querySelector('#checkoutMessage').textContent.length>0`),'Blocked click explains why checkout cannot continue');
+      assert(await evaluate(`document.querySelector('#checkoutForm').hidden && document.querySelector('#checkoutMessage').textContent.length>0`),'Blocked click explains why checkout cannot continue: '+JSON.stringify(await evaluate(`({message:document.querySelector('#checkoutMessage').textContent,hidden:document.querySelector('#checkoutForm').hidden,shipping:getCartShippingQuote(),returns:getCartReturnQuote()})`))+' errors: '+JSON.stringify(errors));
       await evaluate(`document.querySelector('#deliveryType').value=${JSON.stringify(type)};document.querySelector('#deliveryType').dispatchEvent(new Event('change'))`);
     }
     await click(currentCheckoutWidth < 600 ? '#mobileCartCheckout' : '#desktopCartCheckout');
@@ -134,6 +134,12 @@ async function main() {
       assert(await evaluate(`!document.querySelector('#deliveryTypeField').hidden && document.querySelector('#deliveryType').required && document.querySelector('#deliveryTypeField').getBoundingClientRect().bottom <= document.querySelector('[data-cart-subtotal]').getBoundingClientRect().top`),'Paid selector appears above all prices');
       assert.equal(await evaluate(`document.querySelector('#deliveryCost').textContent`),await evaluate(`formatPrice(${cost})`));
       assert.equal(await evaluate(`document.querySelector('[data-cart-total]').textContent`),await evaluate(`formatPrice(${cost}+25.5)`));
+      assert.equal(await evaluate(`document.querySelector('#checkoutTotal').textContent`),await evaluate(`formatPrice(${cost}+25.5)`),'Final checkout total includes delivery');
+      assert(await evaluate(`document.querySelector('#returnShippingEstimate').textContent.includes(formatPrice(${cost})) && document.querySelector('#returnShippingEstimate').getBoundingClientRect().bottom <= document.querySelector('#desktopCartCheckout').getBoundingClientRect().top`),'Return estimate disclosed separately before checkout');
+      if(weight===1)for(const theme of ['dark','light']){
+        if(await evaluate('document.documentElement.dataset.theme')!==theme)await evaluate(`document.querySelector('.theme-toggle').click()`);
+        assert(await evaluate(`(()=>{const form=document.querySelector('#checkoutForm'),submit=form.querySelector('[type="submit"]'),links=[...form.querySelectorAll('.checkout-policy-links a')];return !form.querySelector('input[type="checkbox"]')&&links.length===2&&links.map(a=>a.getAttribute('href')).join(',')==='terms.html,returns.html'&&links.every(a=>a.offsetWidth>0&&a.target==='_blank'&&a.rel==='noopener noreferrer'&&a.getBoundingClientRect().bottom<=submit.getBoundingClientRect().top)&&[...form.querySelectorAll('p.checkout-info')].every(p=>p.textContent.length<100)&&form.textContent.includes('2–5 სამუშაო დღე')&&document.querySelector('#checkoutTotal').offsetWidth>0&&document.querySelector('#checkoutDelivery').offsetWidth>0&&['terms.html','returns.html'].every(url=>{const a=document.querySelector('footer a[href="'+url+'"]');return a&&a.offsetWidth>0})&&document.documentElement.scrollWidth<=innerWidth})()`),'Compact price/delivery and two legal links visible before submission, footer links accessible, no checkbox or overflow in '+theme);
+      }
     }
     await setup(45,false,2);
     assert.equal(await evaluate(`document.querySelector('#cartWeight').textContent`),'90 კგ');
@@ -156,12 +162,18 @@ async function main() {
     await evaluate(`document.querySelector('.cart-item[data-product-id="a"] [data-cart-action="decrease"]').click();placeCartOrder('cash_on_delivery')`);
     assert.equal(await evaluate(`cartStore.itemCount`),0);
     await setup(45,true,2);assert.equal(await evaluate(`document.querySelector('[data-cart-total]').textContent`),await evaluate(`formatPrice(51)`));
+    assert.equal(await evaluate(`document.querySelector('#checkoutTotal').textContent`),await evaluate(`formatPrice(51)`),'Free delivery final total has no extra fee');
     for (const type of ['city','region','branch_pickup','village_highland']) {
       await setup(null,true,2,type);
-      assert(await evaluate(`!document.querySelector('#checkoutForm').hidden && getCartShippingQuote().deliveryCost===0 && document.querySelector('#checkoutDelivery').textContent==='მიწოდება — უფასო (0 ₾)' && document.querySelector('[data-cart-items]').textContent.includes('უფასო მიწოდება')`),'Free shipping opens checkout nationwide without weight');
+      assert(await evaluate(`document.querySelector('#checkoutForm').hidden && getCartShippingQuote().deliveryCost===0 && document.querySelector('#returnShippingEstimate').textContent.includes('წონა დასაზუსტებელია')`),'Free outward delivery remains zero but unknown return weight requires advance confirmation');
       assert(await evaluate(`document.querySelector('#deliveryTypeField').hidden && getComputedStyle(document.querySelector('#deliveryTypeField')).display==='none' && document.querySelector('#deliveryType').disabled && !document.querySelector('#deliveryType').required`),'Free selector completely hidden and excluded from native validation');
       assert.equal(await evaluate(`document.querySelector('#deliveryCost').textContent`),'უფასო (0 ₾)');
     }
+    const blockedFreeRequests = requests.length;
+    await evaluate(`placeCartOrder('cash_on_delivery')`);
+    assert.equal(requests.length,blockedFreeRequests,'Missing return estimate cannot be bypassed by direct submission');
+    await setup(45,true,2);
+    assert(await evaluate(`document.querySelector('#returnShippingEstimate').textContent.includes(formatPrice(65)) && document.querySelector('#returnShippingEstimate').textContent.includes(formatPrice(120))`),'Free-delivery return range uses all product weights, not the synthetic city category');
     const freeRequests = requests.length;
     await evaluate(`document.querySelector('#customerAddress').value='';document.querySelector('#checkoutForm').requestSubmit()`);
     assert.equal(requests.length,freeRequests,'Free orders still require address');
@@ -179,6 +191,7 @@ async function main() {
     assert.equal(await evaluate(`getCartShippingQuote().chargeableWeightKg`),10);
     assert.equal(await evaluate(`getCartShippingQuote().totalWeightKg`),100);
     assert.equal(await evaluate(`getCartShippingQuote().deliveryCost`),11);
+    assert.equal(await evaluate(`getCartReturnQuote().minCost`),65,'Mixed returns include free and paid weights while outward fee stays 11');
     await evaluate(`placeCartOrder('cash_on_delivery')`);assert.equal(await evaluate(`cartStore.itemCount`),0);
     await setup(null,false,2);
     assert(await evaluate(`document.querySelector('#checkoutForm').hidden && getCartShippingQuote().error==='PRODUCT_WEIGHT_REQUIRED' && document.querySelector('#checkoutMessage').textContent.includes('მონაცემები დასაზუსტებელია')`));
@@ -258,7 +271,7 @@ async function main() {
     await wait(`document.readyState!=='loading' && typeof applyCatalogFilter==='function'`);
     await evaluate(`applyCatalogFilter('electric-scooters')`);
     assert(await evaluate(`[...document.querySelectorAll('#catalog .category-detail:not([hidden])')].length>0`));
-    await evaluate(`document.querySelector('.footer-column [data-category-filter=""]').click()`);
+    await evaluate(`document.querySelector('.category-menu-toggle').click();document.querySelector('#headerCategoryMenu [data-category-filter=""]').click()`);
     assert.equal(await evaluate(`activeCategoryFilter`),'','All-products link clears previous category');
     await evaluate(`document.querySelector('#site-search').value='New paid';document.querySelector('#site-search').dispatchEvent(new Event('input'))`);
     assert(await evaluate(`document.querySelector('.search-results').textContent.includes('New paid')`));
@@ -272,7 +285,7 @@ async function main() {
     await wait(`location.pathname.endsWith('/index.html') && typeof applyCatalogFilter==='function' && activeCategoryFilter==='electric-scooters'`);
     console.log('PASS storefront '+width+'px: search, category/all-products filtering, category redirect, information pages and responsive widths');
   }
-  await evaluate(`localStorage.setItem('movio-data-v1',JSON.stringify({products:[{id:'flow',name:'Flow product',category:'electric-scooters',price:35,stock:5,stockStatus:'მარაგშია',freeDelivery:true,weightKg:null,active:true}],orders:[]}));localStorage.setItem('movio-cart','[]')`);
+  await evaluate(`localStorage.setItem('movio-data-v1',JSON.stringify({products:[{id:'flow',name:'Flow product',category:'electric-scooters',price:35,stock:5,stockStatus:'მარაგშია',freeDelivery:true,weightKg:45,active:true}],orders:[]}));localStorage.setItem('movio-cart','[]')`);
   await send('Page.navigate',{url:`http://127.0.0.1:${server.address().port}/item.html?item=flow`});
   await wait(`!!document.querySelector('#detailDeliveryPrice') && !document.querySelector('#detailBuy').disabled`);
   await click('#detailBuy');
@@ -325,7 +338,7 @@ async function main() {
   assert.equal(requests.length,beforeCorrupt,'Unreadable pending storage cannot generate a new order');
   assert.equal(await evaluate(`sessionStorage.getItem('movio-pending-checkout')`),'{broken');
   console.log('PASS changed form and unreadable pending storage block replacement checkout');
-  await evaluate(`localStorage.setItem('movio-data-v1',JSON.stringify({products:[{id:42,name:'Numeric product',category:'electric-scooters',price:10,stock:5,active:true,freeDelivery:true,weightKg:null}],orders:[]}));localStorage.setItem('movio-cart',JSON.stringify([{id:'42',quantity:'2'}]));`);
+  await evaluate(`localStorage.setItem('movio-data-v1',JSON.stringify({products:[{id:42,name:'Numeric product',category:'electric-scooters',price:10,stock:5,active:true,freeDelivery:true,weightKg:45}],orders:[]}));localStorage.setItem('movio-cart',JSON.stringify([{id:'42',quantity:'2'}]));`);
   await send('Page.navigate',{url:`http://127.0.0.1:${server.address().port}/item.html?item=42`});
   await wait(`!!document.querySelector('#detailDeliveryPrice') && !document.querySelector('#detailBuy').disabled`);
   assert.equal(await evaluate(`document.querySelector('#detailCartCount').textContent`),'2','Product page counts mixed legacy IDs/quantities');

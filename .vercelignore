@@ -1,4 +1,10 @@
 tests/
+cloudflare/
+functions/
+dist-cloudflare/
+.wrangler/
+.dev.vars
+.dev.vars.*
 scripts/
 backups/
 .chrome-*

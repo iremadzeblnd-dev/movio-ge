@@ -25,3 +25,16 @@
 .checkout-message.checkout-success { padding:18px; border:1px solid #c6ff1a; border-radius:12px; color:#c6ff1a; line-height:1.7; }
 #checkoutVerification { min-width:0; max-width:100%; overflow:hidden; }
 #deliveryType { width:100%; max-width:100%; min-height:44px; padding:10px; margin:8px 0 14px; background:#10130f; color:#fff; border:1px solid #343a31; border-radius:8px; font:inherit; font-size:16px; }
+.checkout-info { margin: 4px 0; font-size: 12px; line-height: 1.65; color: var(--muted); overflow-wrap: anywhere; }
+.checkout-info a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.checkout-info a:hover { color: var(--paper); }
+.checkout-info a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.checkout-delivery-fee { color: var(--paper); font-weight: 600; }
+.checkout-policy-links { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.checkout-final-total { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; border-top: 1px solid var(--line); padding-top: 12px; margin-top: 4px; color: var(--paper); font-size: 13px; }
+.checkout-final-total small { color: var(--muted); font-size: 11px; }
+.checkout-final-total strong { font-size: 20px; overflow-wrap: anywhere; }
+@media (max-width: 380px) {
+  .account-button[data-authenticated="true"] .account-label { display: block; max-width: 44px; }
+  .account-button[data-authenticated="true"] svg { display: none; }
+}

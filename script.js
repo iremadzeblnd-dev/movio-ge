@@ -313,6 +313,18 @@ function getCartShippingQuote() {
   })), getCartDeliveryType());
 }
 
+function getCartReturnQuote() {
+  return window.MovioShipping.quoteReturn(cartStore.items.map(item => ({
+    product: getProduct(item.id), quantity: item.quantity,
+  })), cartHasOnlyFreeDelivery() ? '' : getCartDeliveryType());
+}
+
+function returnShippingError(quote) {
+  return quote.error === 'DELIVERY_CONFIRMATION_REQUIRED'
+    ? 'დაბრუნების ხარჯი: 1000 კგ-ზე მეტი ტვირთის წინასწარი შეფასებისთვის შეკვეთამდე დაგვიკავშირდით.'
+    : 'დაბრუნების ხარჯის წინასწარი შეფასებისთვის პროდუქტის წონა დასაზუსტებელია. შეკვეთამდე დაგვიკავშირდით.';
+}
+
 function cartShippingError(shipping) {
   const messages = {
     PRODUCT_WEIGHT_REQUIRED: 'პროდუქტის წონა ან მიწოდების მონაცემები დასაზუსტებელია. შეკვეთის გასაფორმებლად დაგვიკავშირდით. კალათა შენახულია.',
@@ -356,7 +368,15 @@ function renderCart() {
   if (checkoutDelivery) checkoutDelivery.textContent = deliveryKnown
     ? deliveryPrice === 0 ? 'მიწოდება — უფასო (0 ₾)' : `მიწოდება: ${formatPrice(deliveryPrice)}`
     : cartShippingError(shipping);
-  const canCheckout = hasItems && shipping.ok;
+  const returnQuote = getCartReturnQuote();
+  const returnEstimate = document.querySelector('#returnShippingEstimate');
+  if (returnEstimate) {
+    returnEstimate.hidden = !hasItems;
+    returnEstimate.textContent = returnQuote.ok
+      ? `მიზეზის გარეშე მთელი კალათის დაბრუნება Onway-ით: დაახლოებით ${returnQuote.minCost === returnQuote.maxCost ? formatPrice(returnQuote.minCost) : `${formatPrice(returnQuote.minCost)}–${formatPrice(returnQuote.maxCost)}`} (წონისა და მარშრუტის კატეგორიის მიხედვით). იხდის მომხმარებელი, უფასო მიწოდების შემთხვევაშიც. შეკვეთის ჯამში არ შედის.`
+      : returnShippingError(returnQuote);
+  }
+  const canCheckout = hasItems && shipping.ok && returnQuote.ok;
   document.querySelector('#cartWeight').textContent = shipping.totalWeightKg == null ? 'დასაზუსტებელია' : `${shipping.totalWeightKg} კგ`;
   const deliverySummary = document.querySelector('#deliverySummary');
   if (deliverySummary) {
@@ -370,9 +390,11 @@ function renderCart() {
   const deliveryNotice = document.querySelector('#deliveryNotice');
   if (deliveryNotice) {
     deliveryNotice.hidden = !hasItems || canCheckout;
-    deliveryNotice.textContent = canCheckout ? '' : cartShippingError(shipping);
+    deliveryNotice.textContent = canCheckout ? '' : shipping.ok ? returnShippingError(returnQuote) : cartShippingError(shipping);
   }
   cartTotal.textContent = !hasItems ? formatPrice(0) : deliveryKnown ? formatPrice(subtotal + deliveryPrice) : 'დასაზუსტებელია';
+  const checkoutTotal = document.querySelector('#checkoutTotal');
+  if (checkoutTotal) checkoutTotal.textContent = cartTotal.textContent;
   const mobileTotal = document.querySelector("#mobileCartTotal");
   if (mobileTotal) mobileTotal.textContent = cartTotal.textContent;
   const mobileCheckout = document.querySelector("#mobileCartCheckout");
@@ -402,6 +424,12 @@ async function openCartCheckout() {
   if (!shipping.ok) {
     message.classList.remove('checkout-success');
     message.textContent = cartShippingError(shipping);
+    message.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+  const returnQuote = getCartReturnQuote();
+  if (!returnQuote.ok) {
+    message.textContent = returnShippingError(returnQuote);
     message.scrollIntoView({ behavior: 'smooth', block: 'center' });
     return;
   }
@@ -526,9 +554,59 @@ function renderManagedProducts() {
 
 function syncCatalogProducts() {
   renderManagedProducts();
+  renderHeaderCategories();
   applyCatalogFilter(activeCategoryFilter);
 }
 
+function renderHeaderCategories() {
+  const menu = document.querySelector('#headerCategoryMenu');
+  if (!menu) return;
+  const categories = new Map();
+  window.MovioStore.getProducts().filter(product => product.active !== false).forEach(product => {
+    const key = window.MovioStore.getCategoryKey(product);
+    if (key && !categories.has(key)) categories.set(key, CATEGORY_LABELS[key] || product.category || key);
+  });
+  const links = [['', 'ყველა პროდუქტი'], ...categories].map(([key, label]) => {
+    CATEGORY_LABELS[key] = label;
+    const link = document.createElement('a');
+    link.href = key ? `?category=${encodeURIComponent(key)}#catalog` : '#catalog';
+    link.dataset.categoryFilter = key;
+    link.textContent = label;
+    return link;
+  });
+  menu.replaceChildren(...links);
+}
+
+const categoryMenuToggle = document.querySelector('.category-menu-toggle');
+const headerCategoryMenu = document.querySelector('#headerCategoryMenu');
+function closeHeaderCategories(restoreFocus = false) {
+  if (!headerCategoryMenu) return;
+  headerCategoryMenu.hidden = true;
+  categoryMenuToggle.setAttribute('aria-expanded', 'false');
+  if (restoreFocus) categoryMenuToggle.focus();
+}
+categoryMenuToggle?.addEventListener('click', () => {
+  const open = headerCategoryMenu.hidden;
+  headerCategoryMenu.hidden = !open;
+  categoryMenuToggle.setAttribute('aria-expanded', String(open));
+});
+document.addEventListener('click', event => {
+  if (!event.target.closest('.header-categories')) closeHeaderCategories();
+});
+document.addEventListener('focusin', event => {
+  if (!event.target.closest('.header-categories')) closeHeaderCategories();
+});
+document.querySelector('.header-categories')?.addEventListener('keydown', event => {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeHeaderCategories(true);
+  } else if (event.key === 'ArrowDown' && event.target === categoryMenuToggle) {
+    event.preventDefault();
+    headerCategoryMenu.hidden = false;
+    categoryMenuToggle.setAttribute('aria-expanded', 'true');
+    headerCategoryMenu.querySelector('a')?.focus();
+  }
+});
 
 function getProductCategoryKey(product) {
   return window.MovioStore.getCategoryKey(product);
@@ -542,6 +620,10 @@ function applyCatalogFilter(categoryKey) {
     );
   });
   activeCategoryFilter = categoryKey || "";
+  document.querySelectorAll('#headerCategoryMenu a').forEach(link => {
+    if (link.dataset.categoryFilter === activeCategoryFilter) link.setAttribute('aria-current', 'true');
+    else link.removeAttribute('aria-current');
+  });
   const cards = document.querySelectorAll("#catalog .product-grid .category-detail");
   let visibleCount = 0;
   cards.forEach((card) => {
@@ -625,12 +707,14 @@ document.addEventListener("click", (event) => {
   searchMessage.hidden = true;
 });
 
-document.querySelectorAll("[data-category-filter]").forEach((link) => {
-  link.addEventListener("click", (event) => {
+document.addEventListener("click", (event) => {
+    const link = event.target.closest('[data-category-filter]');
+    if (!link) return;
     if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
     navigateCatalogCategory(link.dataset.categoryFilter);
-  });
+    closeHeaderCategories();
+    if (link.closest('#headerCategoryMenu')) document.querySelector('#catalog')?.focus({ preventScroll: true });
 });
 
 document.querySelector("#clearCategoryFilter").addEventListener("click", () => {
@@ -702,6 +786,11 @@ async function placeCartOrder(paymentMethod) {
   const shipping = getCartShippingQuote();
   if (!shipping.ok) {
     checkoutMessage.textContent = cartShippingError(shipping);
+    return;
+  }
+  const returnQuote = getCartReturnQuote();
+  if (!returnQuote.ok) {
+    checkoutMessage.textContent = returnShippingError(returnQuote);
     return;
   }
   const formData = new FormData(checkoutForm);

@@ -7,10 +7,14 @@ Read [PRODUCTION-READINESS.md](PRODUCTION-READINESS.md) for the complete migrati
 For local preview using the current Supabase catalog (local checkout is disabled):
 
 ```powershell
-node scripts/dev-server.cjs
+node scripts/start-local.cjs
 ```
 
-Open http://127.0.0.1:4173. Product synchronization only reads Supabase; browser product caches are never restored or uploaded. Restart an already-running preview server after changing its code.
+Open http://127.0.0.1:4173/ or http://127.0.0.1:4173/admin.html. This command starts a hidden background server, checks both pages, and can be run again safely. The server survives closing the launching terminal. It always uses port 4173, regardless of an inherited `PORT` setting. Logs are in `tmp/local-server.log` (ignored by Git). Port conflicts are reported without stopping unrelated processes.
+
+Restart after changing server code: `node scripts/start-local.cjs --restart`. Only a server identifying itself as this project's preview is stopped. To run in the foreground instead, use `node scripts/dev-server.cjs`; closing that terminal or pressing Ctrl+C stops that foreground server. No server runs automatically after reboot; run the startup command again.
+
+Product synchronization only reads Supabase; browser product caches are never restored or uploaded. Local checkout remains disabled.
 
 For an explicit offline preview, run `node scripts/dev-server.cjs --offline`. This mode shows a visible mock notice, fetches the current in-memory catalog on every visit, and runs the Vercel handler against a simulated backend. It overrides inherited credentials and blocks outbound requests. No real orders are created. Static hosting cannot execute /api/orders. Cash on delivery remains the only payment method.
 

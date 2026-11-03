@@ -42,5 +42,21 @@
     }
     return { ...result, ok:true };
   }
-  return { quote, types, tariffs };
+  function quoteReturn(items, deliveryType) {
+    // Free outward delivery never waives return transport. Clone rather than
+    // changing catalog flags, and reuse the exact verified tariff calculator.
+    const chargeable = items.map(item => ({ ...item,
+      product: item.product ? { ...item.product, freeDelivery: false } : item.product,
+    }));
+    // Nationwide-free checkout has no destination-class selection. Disclose
+    // the verified tariff range instead of assuming the synthetic city value.
+    const choices = types.includes(deliveryType) ? [deliveryType] : types;
+    const quotes = choices.map(type => quote(chargeable, type));
+    const unavailable = quotes.find(result => !result.ok);
+    if (unavailable) return { ...unavailable, minCost: null, maxCost: null };
+    return { ok: true, totalWeightKg: quotes[0].totalWeightKg,
+      minCost: Math.min(...quotes.map(result => result.deliveryCost)),
+      maxCost: Math.max(...quotes.map(result => result.deliveryCost)) };
+  }
+  return { quote, quoteReturn, types, tariffs };
 });

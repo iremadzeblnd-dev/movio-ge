@@ -1,0 +1,8 @@
+{
+  "name": "movio-storefront",
+  "private": true,
+  "scripts": {
+    "build:cloudflare": "node scripts/build-cloudflare.cjs"
+  },
+  "engines": {"node": ">=22"}
+}
