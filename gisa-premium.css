@@ -163,19 +163,30 @@ html[data-theme="light"] :is(.information-page a,.checkout-policy-links a) { col
   *, *::before, *::after { animation-duration:.01ms!important; transition-duration:.01ms!important; }
 }
 
-/* Homepage hero only: show the complete image at its original aspect ratio. */
+/* Homepage hero only: complete foreground image over a soft extension. */
 .hero.hero-cinematic, html[data-theme] .hero.hero-cinematic {
-  position:relative; display:block; width:100%; max-width:none; height:auto; min-height:0;
+  position:relative; isolation:isolate; display:flex; align-items:center; justify-content:center;
+  width:100%; max-width:none; height:500px; min-height:0;
   margin:0; padding:0; border:0; border-radius:0; overflow:hidden; background:#0c0e11;
 }
+.hero-cinematic::before {
+  content:""; position:absolute; inset:-24px; z-index:-1; pointer-events:none;
+  background:url("gisa-scooters.jpg") center / cover no-repeat;
+  filter:blur(20px) brightness(.45);
+}
 .hero-cinematic .hero-cinematic-image {
-  display:block; width:100%; max-width:none; height:auto;
+  display:block; width:auto; max-width:100%; height:auto; max-height:100%; flex:none;
   margin:0; padding:0; border:0; border-radius:0;
 }
 .hero.hero-cinematic h1, html[data-theme] .hero.hero-cinematic h1 {
-  position:absolute; inset:5% auto auto 3%; width:28%; max-width:none; margin:0;
-  color:#f0eef0; font-size:clamp(12px,1.4vw,22px); font-weight:600;
+  position:absolute; inset:5% auto auto 3%; width:22%; max-width:none; margin:0;
+  color:#f0eef0; font-size:clamp(12px,1.2vw,18px); font-weight:600;
   line-height:1.55; letter-spacing:-.025em; text-wrap:balance;
   text-shadow:0 1px 8px rgba(0,0,0,.65); pointer-events:none;
 }
 .hero-cinematic .hero-headline-accent { color:#dfcba8; }
+@media (max-width:760px) {
+  .hero.hero-cinematic, html[data-theme] .hero.hero-cinematic { height:auto; }
+  .hero-cinematic .hero-cinematic-image { width:100%; max-height:none; }
+  .hero.hero-cinematic h1, html[data-theme] .hero.hero-cinematic h1 { width:28%; }
+}
