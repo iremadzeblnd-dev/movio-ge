@@ -165,12 +165,12 @@ html[data-theme="light"] :is(.information-page a,.checkout-policy-links a) { col
 
 /* Homepage hero only: the full supplied composition keeps its natural ratio. */
 .hero.hero-cinematic, html[data-theme] .hero.hero-cinematic {
-  position:relative; display:block; width:100%; max-width:1360px; height:400px; min-height:0;
-  margin:22px auto 0; padding:0; border:0; border-radius:0; overflow:visible; background:#0c0e11;
+  position:relative; display:block; width:100%; max-width:none; height:auto; min-height:0;
+  margin:0; padding:0; border:0; border-radius:0; overflow:visible; background:#0c0e11;
 }
 .hero-cinematic .hero-cinematic-image {
-  display:block; width:100%; max-width:100%; height:100%; object-position:center;
-  object-fit:contain; margin:0; padding:0; border:0; border-radius:0;
+  display:block; width:100%; max-width:none; height:auto;
+  margin:0; padding:0; border:0; border-radius:0;
 }
 .hero.hero-cinematic h1, html[data-theme] .hero.hero-cinematic h1 {
   position:absolute; inset:5% auto auto 3%; width:28%; max-width:none; margin:0;
@@ -179,8 +179,3 @@ html[data-theme="light"] :is(.information-page a,.checkout-policy-links a) { col
   text-shadow:0 1px 8px rgba(0,0,0,.65); pointer-events:none;
 }
 .hero-cinematic .hero-headline-accent { color:#dfcba8; }
-@media (max-width:760px) {
-  .hero.hero-cinematic, html[data-theme] .hero.hero-cinematic {
-    height:clamp(180px,56.31vw,300px); margin:0 auto;
-  }
-}
