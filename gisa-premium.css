@@ -23,20 +23,20 @@ a, button, input, select, textarea { -webkit-tap-highlight-color:transparent; }
 .site-header, .item-page-header, html[data-theme="light"] :is(.site-header,.item-page-header) {
   background:var(--ink); border-bottom:1px solid var(--line); min-height:88px;
 }
-/* The original square JPG is centered unchanged; only its surplus background is contained. */
+/* Transparent vector wordmark: no photo panel, clipping or decorative underlines. */
 .wordmark, .footer-brand-link, .gisa-dialog-logo {
   display:inline-flex; align-items:center; justify-content:center;
   width:166px; max-width:100%; height:60px; min-height:60px;
-  padding:0!important; margin:0; overflow:hidden; border:1px solid rgba(209,184,136,.16);
-  border-radius:9px; background:#151619; transform:none;
+  padding:0!important; margin:0; overflow:visible; border:0;
+  border-radius:0; background:transparent; transform:none;
 }
 .wordmark .movio-brand-image, .footer-brand-link .movio-brand-image,
 .gisa-dialog-logo img, .site-header.storefront-theme-header .movio-brand-image {
   display:block; flex:0 0 auto; width:100%!important; height:auto!important;
-  max-height:none!important; max-width:none!important; aspect-ratio:1; object-fit:contain;
+  max-height:46px!important; max-width:100%!important; aspect-ratio:auto; object-fit:contain;
   margin:0; padding:0; filter:none; transform:none;
 }
-.wordmark:hover, .footer-brand-link:hover { border-color:rgba(209,184,136,.5); }
+.wordmark:hover, .footer-brand-link:hover { opacity:.88; }
 .theme-toggle, .category-menu-toggle, .header-cart-link, .account-button, .detail-header-cart { border-color:var(--line); border-radius:9px; color:var(--paper); }
 .search-form, html[data-theme="light"] .search-form { background:var(--surface); border:1px solid var(--line); border-radius:10px; }
 .search-form input { color:var(--paper); }
@@ -58,10 +58,10 @@ a, button, input, select, textarea { -webkit-tap-highlight-color:transparent; }
   display:flex; align-items:center; justify-content:center; position:relative;
   width:100%; height:300px; min-height:0; padding:0; opacity:1;
   border:1px solid rgba(209,184,136,.15); border-radius:18px;
-  background:#151619; overflow:hidden; box-shadow:var(--gisa-shadow);
+  background:var(--gisa-hero); overflow:hidden; box-shadow:var(--gisa-shadow);
 }
 .hero-brand-visual::before, .hero-brand-visual::after { content:none!important; }
-.gisa-hero-logo { display:block; flex:0 0 auto; width:100%; height:auto; aspect-ratio:1; max-width:none; object-fit:contain; filter:none; transform:none; }
+.gisa-hero-logo { display:block; flex:0 0 auto; width:88%; height:auto; aspect-ratio:auto; max-width:none; object-fit:contain; filter:none; transform:none; }
 .primary-action, .search-submit, .checkout-submit, .auth-submit, .product-buy,
 .item-page-ecommerce .detail-purchase-actions .detail-buy, .mobile-cart-checkout button {
   background:var(--accent); color:#17181b!important; border:1px solid transparent;
@@ -127,7 +127,7 @@ html[data-theme="light"] :is(.information-page a,.checkout-policy-links a) { col
 .storefront-footer :is(.footer-column p,.footer-bottom), .footer-nav a { color:var(--muted); border-color:var(--line); }
 .storefront-footer .footer-column a:hover, .footer-nav a:hover { color:var(--accent)!important; }
 .footer-brand-link { width:180px; height:64px; }
-.footer-mark.movio-brand-image { width:166px!important; height:60px!important; object-fit:cover; object-position:50% 50%; border-radius:9px; filter:none; }
+.footer-mark.movio-brand-image { width:166px!important; height:auto!important; max-height:46px; object-fit:contain; border-radius:0; filter:none; }
 .footer-brand-link .footer-logo { width:100%!important; height:auto!important; max-height:none!important; }
 .storefront-admin-brand { display:flex; justify-content:center; }
 .gisa-dialog-logo { width:180px; height:62px; }

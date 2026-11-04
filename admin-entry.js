@@ -9,7 +9,7 @@
   dialog.innerHTML = `
     <form class="storefront-admin-form">
       <button class="storefront-admin-close" type="button" aria-label="Close">&times;</button>
-      <p class="storefront-admin-brand"><span class="gisa-dialog-logo"><img src="gisa-logo.jpg" alt="GISA" width="1280" height="1280"></span></p>
+      <p class="storefront-admin-brand"><span class="gisa-dialog-logo"><img src="gisa-wordmark.svg" alt="GISA" width="963" height="188"></span></p>
       <h2 id="storefrontAdminTitle">Administrator access</h2>
       <label for="storefrontAdminEmail">Email</label>
       <input id="storefrontAdminEmail" name="email" type="email" autocomplete="username" required>

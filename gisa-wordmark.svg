@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="963" height="188" viewBox="160 506 963 188" fill="none">
+  <title>GISA</title>
+  <defs>
+    <linearGradient id="silver" x1="0" y1="513" x2="0" y2="688" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#c9c8c6"/>
+      <stop offset=".22" stop-color="#b5b4b3"/>
+      <stop offset=".48" stop-color="#a6a6a5"/>
+      <stop offset=".74" stop-color="#90918f"/>
+      <stop offset="1" stop-color="#70716e"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="973" y1="609" x2="973" y2="688" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#c2a46d"/>
+      <stop offset=".45" stop-color="#a98a54"/>
+      <stop offset="1" stop-color="#806239"/>
+    </linearGradient>
+  </defs>
+  <g fill="url(#silver)" stroke="#d5d3cf" stroke-opacity=".32" stroke-width="1" stroke-linejoin="round">
+    <path d="M415 514H235C191 514 166 548 166 601C166 654 189 687 235 687H415V583H303L265 619H377V650H244C216 650 204 634 204 601C204 569 218 551 245 551H378L415 514Z"/>
+    <path d="M465 514H504V687H465V514Z"/>
+    <path d="M785 514H615C578 514 557 534 557 565C557 596 579 615 614 615H729C742 615 749 621 749 632C749 644 741 651 728 651H595L557 687H733C767 687 786 666 786 634C786 602 766 582 733 582H614C602 582 595 576 595 566C595 556 602 551 615 551H748L785 514Z"/>
+    <path d="M819 687L952 514H984L1116 687H1071L969 557L863 687H819Z"/>
+  </g>
+  <path d="M913 687L973 610L1032 687H1007L973 645L940 687H913Z" fill="url(#gold)" stroke="#d6b77c" stroke-opacity=".38" stroke-width="1" stroke-linejoin="round"/>
+</svg>
