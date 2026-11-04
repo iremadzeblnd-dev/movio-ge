@@ -1,0 +1,6 @@
+/* Brand imagery only; Admin layout, forms and authorization stay intact. */
+:root { --ink:#111215; --surface:#191a1e; --surface2:#222328; --line:#3b3b42; --muted:#b0b0b8; --paper:#eeedf0; --accent:#d1b888; }
+.gisa-admin-mark { display:inline-flex; align-items:center; justify-content:center; width:128px; height:54px; overflow:hidden; flex-shrink:0; border-radius:8px; background:#151619; }
+.gisa-admin-mark img { display:block; width:128px; height:128px; max-width:none; object-fit:contain; }
+.brand:has(.gisa-admin-mark) { display:flex; align-items:center; gap:10px; }
+.sidebar, th, .navigation button:hover, .navigation button[aria-current=page] { background:var(--surface2); }

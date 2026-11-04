@@ -292,7 +292,7 @@ if (!product) {
     if (event.key === "movio-cart") updateCartCount();
   });
 
-  document.title = `MOVIO — ${productName}`;
+  document.title = `GISA — ${productName}`;
 
   const relatedProducts = products.filter((item) => item.active !== false &&
     String(item.id) !== String(product.id) && window.MovioStore.getCategoryKey(item) === window.MovioStore.getCategoryKey(product)).slice(0, 4);

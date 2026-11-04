@@ -334,7 +334,7 @@
     if (!currentUser) return openAuth();
     ++ordersRequest;
     activeSection = section; closeMenu(); authView.hidden = true; detailsView.hidden = false;
-    document.getElementById('accountGreeting').textContent = currentUser.name || 'MOVIO ანგარიში';
+    document.getElementById('accountGreeting').textContent = currentUser.name || 'GISA ანგარიში';
     const profilePanel = document.getElementById('accountProfilePanel'), ordersPanel = document.getElementById('accountOrdersPanel');
     profilePanel.hidden = section !== 'profile'; ordersPanel.hidden = section !== 'orders';
     profilePanel.replaceChildren(); ordersPanel.replaceChildren();

@@ -222,7 +222,7 @@
   }
 
   function createOrder() {
-    throw new Error("შეკვეთები ფორმდება მხოლოდ MOVIO-ს ონლაინ სერვისით.");
+    throw new Error("შეკვეთები ფორმდება მხოლოდ GISA-ს ონლაინ სერვისით.");
   }
 
   function updateOrderStatus(id, status) {

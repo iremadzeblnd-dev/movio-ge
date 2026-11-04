@@ -44,7 +44,7 @@ const settle = () => new Promise(r=>setTimeout(r,20));
  assert.match(sync,/saveProduct = function \(product\) \{\s*requireAdmin\(\)/);
  assert.match(sync,/deleteProduct = function \(id\) \{\s*requireAdmin\(\)/);
  for(const name of ['index.html','cart.html']) {
-   const html=read(name);assert(html.includes('© 2026 MOVIO. ყველა უფლება დაცულია.'));
+   const html=read(name);assert(html.includes('© 2026 GISA. ყველა უფლება დაცულია.'));
    assert(!/დემო შეკვეთის შექმნა|mock checkout|fake order|prototype/i.test(html));
  }
  console.log('PASS Admin security: guests/customer metadata denied, allowlisted Admin allowed, RPC failures fail closed, refresh/logout revoke UI, product write guards, RLS/grants static review, footer; NO SQL executed');

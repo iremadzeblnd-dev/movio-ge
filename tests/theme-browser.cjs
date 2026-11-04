@@ -9,7 +9,7 @@ const server=http.createServer((req,res)=>{
  const url=new URL(req.url,'http://localhost'),name=url.pathname.slice(1)||'index.html';
  if(name==='supabaseClient.js'){res.setHeader('Content-Type','text/javascript');res.end(`window.movioSupabase={from:()=>({select:()=>{const q={order:async()=>({data:${JSON.stringify(products)}}),eq:()=>q,limit:async()=>({data:${JSON.stringify(products)}})};return q;}}),auth:{getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},rpc:async()=>({data:false})};`);return;}
  try{let data=fs.readFileSync(path.join(root,name));if(name.endsWith('.html')){data=data.toString().replace(/<script src="https:[^>]*><\/script>/g,'').replace(/<link\b[^>]*href="https:[^>]*>/g,'');if(url.searchParams.has('baseline'))data=data.replace(/<script src="theme.js[^>]*><\/script>/,'').replace(/<link[^>]*href="theme.css[^>]*>/,'');}
- res.setHeader('Content-Type',name.endsWith('.js')?'text/javascript':name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.css')?'text/css':name.endsWith('.png')?'image/png':'image/svg+xml');res.end(data);}catch{res.writeHead(404);res.end()}
+ res.setHeader('Content-Type',name.endsWith('.js')?'text/javascript':name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.css')?'text/css':name.endsWith('.png')?'image/png':/\.jpe?g$/i.test(name)?'image/jpeg':'image/svg+xml');res.end(data);}catch{res.writeHead(404);res.end()}
 });
 (async () => {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -67,7 +67,8 @@ const server=http.createServer((req,res)=>{
       assert(await evaluate(`document.documentElement.dataset.theme==='light'&&localStorage.getItem('movio-theme')==='light'&&document.querySelector('#site-search').value==='Theme'&&document.querySelector('#loginEmail').value==='kept@example.test'&&document.querySelector('#registerName').value==='Kept'&&window.preservedThemeNode===document.querySelector('.compact-product-card')`),'Instant switch preserves inputs and DOM');
       for(const name of pages){await send('Page.navigate',{url:base+'/'+name+(name==='item.html'?'?item=theme-0':'')});await loaded('/'+name);
         assert(await evaluate(`document.documentElement.dataset.theme==='light'&&document.querySelectorAll('.theme-toggle').length===1`),name+' restores light');
-        const layout=await evaluate(`(()=>{const b=document.querySelector('.theme-toggle'),r=b.getBoundingClientRect();return {overflow:document.documentElement.scrollWidth>innerWidth,x:r.x,right:r.right,w:r.width,h:r.height,bg:getComputedStyle(document.body).backgroundColor}})()`);assert(!layout.overflow,JSON.stringify({name,width,...layout}));assert(layout.x>=0&&layout.right<=width&&layout.w>=40&&layout.h>=44,JSON.stringify({name,width,...layout}));assert.equal(layout.bg,'rgb(255, 255, 255)',name+' light background');
+        const layout=await evaluate(`(()=>{const b=document.querySelector('.theme-toggle'),r=b.getBoundingClientRect();return {overflow:document.documentElement.scrollWidth>innerWidth,x:r.x,right:r.right,w:r.width,h:r.height,bg:getComputedStyle(document.body).backgroundColor}})()`);assert(!layout.overflow,JSON.stringify({name,width,...layout}));assert(layout.x>=0&&layout.right<=width&&layout.w>=40&&layout.h>=44,JSON.stringify({name,width,...layout}));assert.equal(layout.bg,'rgb(246, 245, 242)',name+' GISA light background');
+        assert(await evaluate(`document.title.startsWith('GISA')&&document.querySelector('.wordmark img').getAttribute('src')==='gisa-logo.jpg'&&document.querySelector('.wordmark img').naturalWidth===1280`),name+' uses exact supplied GISA logo and branding');
         await evaluate(`document.querySelector('.theme-toggle').click()`);assert.equal(await evaluate(`document.documentElement.dataset.theme`),'dark');await evaluate(`document.querySelector('.theme-toggle').click()`);
       }
       await send('Page.navigate',{url:base+'/cart.html'});await loaded('/cart.html');
@@ -91,7 +92,7 @@ const server=http.createServer((req,res)=>{
     }
     // Screenshot artifacts for local visual review, never published.
     fs.mkdirSync(path.join(root,'test-results'),{recursive:true});
-    for(const width of [375,1280]){await send('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:1,mobile:width===375});await send('Page.navigate',{url:base+'/index.html'});await loaded('/index.html');await evaluate(`window.scrollTo(0,0)`);const shot=await send('Page.captureScreenshot',{format:'png'});fs.writeFileSync(path.join(root,'test-results',`theme-light-${width}.png`),Buffer.from(shot.data,'base64'));}
+    for(const width of [375,1280]){await send('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:1,mobile:width===375});await send('Page.navigate',{url:base+'/index.html'});await loaded('/index.html');await evaluate(`window.scrollTo(0,0)`);for(const theme of ['light','dark']){if(await evaluate('document.documentElement.dataset.theme')!==theme)await evaluate(`document.querySelector('.theme-toggle').click()`);const shot=await send('Page.captureScreenshot',{format:'png'});fs.writeFileSync(path.join(root,'test-results',`gisa-${theme}-${width}.png`),Buffer.from(shot.data,'base64'));}}
     await send('Emulation.setDeviceMetricsOverride',{width:375,height:900,deviceScaleFactor:1,mobile:true});
     for(const page of ['item.html?item=theme-0','cart.html','index.html']){
       await send('Page.navigate',{url:base+'/'+page});await loaded('/'+page.split('?')[0]);
